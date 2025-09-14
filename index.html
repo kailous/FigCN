@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>FigCN - mitmproxy 控制台</title>
+  <style>
+    body { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; padding: 16px; }
+    fieldset { margin-bottom: 12px; }
+    label { display: block; margin: 6px 0 2px; }
+    input, select, textarea { width: 100%; padding: 6px; box-sizing: border-box; }
+    #console { height: 320px; overflow: auto; background: #111; color: #ddd; padding: 8px; white-space: pre-wrap; border-radius: 6px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    button { padding: 8px 12px; margin-right: 8px; }
+  </style>
+</head>
+<body>
+  <h1>mitmproxy 启动器</h1>
+
+  <fieldset>
+    <legend>基本配置</legend>
+    <div class="row">
+      <div>
+        <label>运行模式</label>
+        <select id="mode">
+          <option value="regular">mitmproxy（命令行）</option>
+          <option value="mitmweb">mitmweb（带 Web UI）</option>
+          <option value="transparent">transparent（需系统转发/iptables 等）</option>
+        </select>
+      </div>
+      <div>
+        <label>监听地址</label>
+        <input id="host" placeholder="0.0.0.0" />
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>端口</label>
+        <input id="port" type="number" placeholder="8080" />
+      </div>
+      <div>
+        <label>上游代理（可选）</label>
+        <input id="upstream" placeholder="http://127.0.0.1:7890" />
+      </div>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>路径与脚本</legend>
+    <div class="row">
+      <div>
+        <label>mitmproxy 路径（留空用 PATH）</label>
+        <input id="mitmPath" placeholder="mitmproxy 的可执行路径或命令名" />
+      </div>
+      <div>
+        <label>mitmweb 路径（留空用 PATH）</label>
+        <input id="mitmWebPath" placeholder="mitmweb 的可执行路径或命令名" />
+      </div>
+    </div>
+    <label>插件脚本（逗号分隔）</label>
+    <input id="scripts" placeholder="/path/a.py, /path/b.py" />
+
+    <label>额外参数（可选）</label>
+    <input id="extraArgs" placeholder="--ssl-insecure --set block_global=false" />
+  </fieldset>
+
+  <div style="margin: 12px 0;">
+    <button id="startBtn">启动</button>
+    <button id="stopBtn">停止</button>
+    <button id="saveBtn">保存配置</button>
+  </div>
+
+  <div id="console"></div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
