@@ -1,75 +1,76 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh">
 <head>
   <meta charset="UTF-8" />
-  <title>FigCN - mitmproxy 控制台</title>
+  <title>FigCN 控制面板</title>
   <style>
-    body { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; padding: 16px; }
-    fieldset { margin-bottom: 12px; }
-    label { display: block; margin: 6px 0 2px; }
-    input, select, textarea { width: 100%; padding: 6px; box-sizing: border-box; }
-    #console { height: 320px; overflow: auto; background: #111; color: #ddd; padding: 8px; white-space: pre-wrap; border-radius: 6px; }
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    button { padding: 8px 12px; margin-right: 8px; }
+    :root { --gap: 10px; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 20px; }
+    h1 { margin: 0 0 18px; font-size: 20px; }
+    .row { display: flex; align-items: center; gap: var(--gap); margin-bottom: var(--gap); flex-wrap: wrap; }
+    .card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+    .label { font-weight: 600; margin-right: 8px; }
+    input[type="text"], input[type="number"] {
+      padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 8px; min-width: 260px;
+    }
+    input[disabled] { background: #f3f4f6; }
+    button { padding: 6px 12px; border: 1px solid #d1d5db; border-radius: 8px; background: #fff; cursor: pointer; }
+    button:hover { background: #f9fafb; }
+    textarea { width: 100%; height: 280px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; padding: 10px; border: 1px solid #e5e7eb; border-radius: 12px; }
+    .hint { color: #6b7280; font-size: 12px; }
   </style>
 </head>
 <body>
-  <h1>mitmproxy 启动器</h1>
+  <h1>FigCN 控制面板</h1>
 
-  <fieldset>
-    <legend>基本配置</legend>
+  <div class="card">
     <div class="row">
-      <div>
-        <label>运行模式</label>
-        <select id="mode">
-          <option value="regular">mitmproxy（命令行）</option>
-          <option value="mitmweb">mitmweb（带 Web UI）</option>
-          <option value="transparent">transparent（需系统转发/iptables 等）</option>
-        </select>
-      </div>
-      <div>
-        <label>监听地址</label>
-        <input id="host" placeholder="0.0.0.0" />
-      </div>
+      <span class="label">监听地址</span>
+      <input id="listenHost" type="text" placeholder="127.0.0.1" />
+      <span class="label">端口</span>
+      <input id="port" type="number" placeholder="8080" style="width:100px" />
+      <button id="btnStart">启动代理</button>
+      <button id="btnStop">停止代理</button>
     </div>
     <div class="row">
-      <div>
-        <label>端口</label>
-        <input id="port" type="number" placeholder="8080" />
-      </div>
-      <div>
-        <label>上游代理（可选）</label>
-        <input id="upstream" placeholder="http://127.0.0.1:7890" />
-      </div>
+      <label class="label">
+        <input id="upstreamToggle" type="checkbox" />
+        使用上游代理
+      </label>
+      <input id="upstreamInput" type="text" placeholder="例：http://127.0.0.1:7890 或 socks5://127.0.0.1:1080" disabled />
+      <button id="btnDetect" disabled>侦测上游</button>
     </div>
-  </fieldset>
-
-  <fieldset>
-    <legend>路径与脚本</legend>
-    <div class="row">
-      <div>
-        <label>mitmproxy 路径（留空用 PATH）</label>
-        <input id="mitmPath" placeholder="mitmproxy 的可执行路径或命令名" />
-      </div>
-      <div>
-        <label>mitmweb 路径（留空用 PATH）</label>
-        <input id="mitmWebPath" placeholder="mitmweb 的可执行路径或命令名" />
-      </div>
+    <div class="hint">
+      说明：勾选“使用上游代理”后，输入框支持 <code>http://</code>、<code>https://</code>、<code>socks5://</code> 或 <code>socks4://</code>。
+      点“侦测上游”会自动检测系统/PAC/常见端口，并把结果写入输入框（若检测到）。
     </div>
-    <label>插件脚本（逗号分隔）</label>
-    <input id="scripts" placeholder="/path/a.py, /path/b.py" />
-
-    <label>额外参数（可选）</label>
-    <input id="extraArgs" placeholder="--ssl-insecure --set block_global=false" />
-  </fieldset>
-
-  <div style="margin: 12px 0;">
-    <button id="startBtn">启动</button>
-    <button id="stopBtn">停止</button>
-    <button id="saveBtn">保存配置</button>
   </div>
 
-  <div id="console"></div>
+  <div class="card">
+    <div class="row">
+      <span class="label">模式</span>
+      <select id="mode">
+        <option value="regular">regular（mitmdump）</option>
+        <option value="mitmweb">mitmweb（可视化）</option>
+      </select>
+      <span class="hint">目前默认使用白名单：仅 *.figma.com 与 kailous.github.io 会做 MITM。</span>
+    </div>
+    <div class="row">
+      <span class="label">额外参数</span>
+      <input id="extraArgs" type="text" placeholder='可选，例如：--ssl-insecure' style="min-width:360px" />
+      <button id="btnSave">保存配置</button>
+      <button id="btnReload">重新载入配置</button>
+    </div>
+  </div>
+  <div class="row">
+    <span class="label">说明</span>
+    <span class="hint">
+      1. 启动代理后，请设置浏览器代理为你设定好的监听地址和端口。<br>
+      2. 第一次使用需要安装证书，请到 <a href="http://mitm.it/" target="_blank">证书下载</a> 下载并安装证书。<br>
+    </span>
+  </div>
+
+  <textarea id="log" readonly placeholder="代理日志输出..."></textarea>
 
   <script src="renderer.js"></script>
 </body>

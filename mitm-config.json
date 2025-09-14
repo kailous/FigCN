@@ -2,10 +2,10 @@
   "mode": "regular",
   "listenHost": "0.0.0.0",
   "port": 8080,
-  "upstream": "",
+  "upstream": "http://127.0.0.1:6152",
   "scripts": "figcn_injector.py",
   "extraArgs": "",
-  "pythonPath": "",
   "mitmPath": "mitmproxy",
-  "mitmWebPath": "mitmweb"
+  "mitmWebPath": "mitmweb",
+  "pythonPath": ""
 }

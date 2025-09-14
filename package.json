@@ -1,11 +1,45 @@
 {
-  "name": "figcn",
-  "version": "1.0.0",
+  "name": "FigCN",
+  "version": "1.1.0",
+  "description": "Figma 汉化代理助手（Electron + mitmproxy）",
   "main": "main.js",
+  "productName": "FigCN",
+  "author": "kailous",
   "scripts": {
-    "start": "electron ."
+    "start": "OS_ACTIVITY_MODE=disable ELECTRON_ENABLE_LOGGING=false electron .",
+    "dist": "electron-builder -m"
+  },
+  "build": {
+    "appId": "com.yourdomain.figcn",
+    "productName": "FigCN",
+    "asar": false,
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "renderer.js",
+      "node_modules/**"
+    ],
+    "extraResources": [
+      { "from": "venv", "to": "venv" },
+      { "from": "figcn_injector.py", "to": "figcn_injector.py" },
+      { "from": "figcn_rules.yaml", "to": "figcn_rules.yaml" }
+    ],
+    "mac": {
+      "target": ["dmg", "zip"],
+      "category": "public.app-category.developer-tools",
+      "hardenedRuntime": false
+    },
+    "afterPack": "scripts/afterPack.js",
+    "directories": {
+      "buildResources": "build"
+    }
+  },
+  "dependencies": {
+    "pac-resolver": "^7.0.1"
   },
   "devDependencies": {
-    "electron": "^31.0.0"
+    "electron": "31.7.7",
+    "electron-builder": "^26.0.12"
   }
 }
