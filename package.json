@@ -10,8 +10,8 @@
     "dist": "electron-builder -m"
   },
   "build": {
-    "appId": "com.yourdomain.figcn",
-    "productName": "FigCN",
+    "appId": "com.rainforest.figcn.beta",
+    "productName": "FigCN(Beta)",
     "asar": false,
     "files": [
       "main.js",
