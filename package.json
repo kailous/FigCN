@@ -16,8 +16,9 @@
     "files": [
       "main.js",
       "preload.js",
-      "index.html",
-      "renderer.js",
+      "static/index.html",
+      "static/js/renderer.js",
+      "static/css/style.css",
       "node_modules/**"
     ],
     "extraResources": [

@@ -22,7 +22,7 @@ function createWindow() {
     width: 960, height: 700,
     webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false }
   });
-  mainWindow.loadFile("index.html");
+  mainWindow.loadFile("static/index.html");
 }
 app.whenReady().then(createWindow);
 app.on("window-all-closed", () => { if (process.platform !== "darwin") app.quit(); });
