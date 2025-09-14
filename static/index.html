@@ -1,13 +1,15 @@
 <!DOCTYPE html>
 <html lang="zh">
+
 <head>
   <meta charset="UTF-8" />
   <title>FigCN 控制面板</title>
   <link rel="stylesheet" href="css/style.css" />
 </head>
+
 <body>
   <h1>FigCN 控制面板</h1>
-
+  <!-- 服务器控制 -->
   <div class="card">
     <div class="row">
       <span class="label">监听地址</span>
@@ -17,6 +19,16 @@
       <button id="btnStart">启动代理</button>
       <button id="btnStop">停止代理</button>
     </div>
+    <div class="card">
+      <!-- 系统代理 -->
+      <div class="row">
+        <span class="label">系统代理</span>
+        <button id="btnSetSysProxy">一键设置为本地代理</button>
+        <button id="btnRestoreSysProxy">恢复系统代理</button>
+        <span class="hint">将系统 HTTP/HTTPS 代理设置为监听地址与端口（如 127.0.0.1:8080）。需要管理员授权。</span>
+      </div>
+    </div>
+    <!-- 上游代理 -->
     <div class="row">
       <label class="label">
         <input id="upstreamToggle" type="checkbox" />
@@ -25,6 +37,7 @@
       <input id="upstreamInput" type="text" placeholder="例：http://127.0.0.1:7890 或 socks5://127.0.0.1:1080" disabled />
       <button id="btnDetect" disabled>侦测上游</button>
     </div>
+    <!-- 说明 -->
     <div class="hint">
       说明：勾选“使用上游代理”后，输入框支持 <code>http://</code>、<code>https://</code>、<code>socks5://</code> 或 <code>socks4://</code>。
       点“侦测上游”会自动检测系统/PAC/常见端口，并把结果写入输入框（若检测到）。
@@ -59,4 +72,5 @@
 
   <script src="js/renderer.js"></script>
 </body>
+
 </html>

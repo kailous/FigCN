@@ -162,3 +162,145 @@ ipcMain.handle("stop-mitm", async () => {
   mitmProc = null;
   return true;
 });
+
+// ========= 工具：一次性提权执行多条命令（只弹一次密码框） =========
+function escAppleScript(s) {
+  // 把 " 变成 \" 供 AppleScript 字符串使用
+  return String(s).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+async function runAsAdminBatch(shellCmds /* string[] */) {
+  // 用 ; 串起来，让 /bin/sh 一次性执行
+  const joined = shellCmds.join(" ; ");
+  const osa = `do shell script "${escAppleScript(joined)}" with administrator privileges`;
+  // 注意：每调用一次 osascript 就会触发一次授权，这里只调用一次
+  await execFileP("osascript", ["-e", osa]);
+}
+
+// ========= networksetup & 备份 =========
+const proxyBackupFile = path.join(app.getPath("userData"), "proxy-backup.json");
+function isMac() { return process.platform === "darwin"; }
+
+async function listNetworkServices() {
+  const { stdout } = await execFileP("networksetup", ["-listallnetworkservices"]);
+  // 过滤掉说明性行
+  return stdout.split("\n")
+    .map(s => s.trim())
+    .filter(s => s && !s.startsWith("An asterisk"));
+}
+
+async function readServiceProxy(service) {
+  const get = async (flag) => {
+    try {
+      const { stdout } = await execFileP("networksetup", [flag, service]);
+      return stdout;
+    } catch {
+      return "";
+    }
+  };
+  const web = await get("-getwebproxy");
+  const sec = await get("-getsecurewebproxy");
+  const auto = await get("-getautoproxyurl");
+  const autostate = await get("-getautoproxystate");
+  return { web, sec, auto, autostate };
+}
+
+async function backupCurrentProxy() {
+  const services = await listNetworkServices();
+  const data = {};
+  for (const s of services) {
+    data[s] = await readServiceProxy(s);
+  }
+  fs.mkdirSync(path.dirname(proxyBackupFile), { recursive: true });
+  fs.writeFileSync(proxyBackupFile, JSON.stringify({ ts: Date.now(), data }, null, 2));
+}
+
+// ========= 根据配置生成命令（全部一次性执行）=========
+function buildSetCommandsForService(service, host, port) {
+  const svc = `"${service.replace(/"/g, '\\"')}"`;
+  return [
+    // 关闭 PAC
+    `networksetup -setautoproxystate ${svc} off`,
+    // HTTP
+    `networksetup -setwebproxy ${svc} ${host} ${port}`,
+    `networksetup -setwebproxystate ${svc} on`,
+    // HTTPS
+    `networksetup -setsecurewebproxy ${svc} ${host} ${port}`,
+    `networksetup -setsecurewebproxystate ${svc} on`,
+  ];
+}
+
+function buildRestoreCommandsForService(service, snap) {
+  const svc = `"${service.replace(/"/g, '\\"')}"`;
+  const cmds = [];
+
+  // 解析快照
+  const webOn = /Enabled:\s+Yes/i.test(snap.web || "");
+  const wHost = (snap.web?.match(/Server:\s+(.+)/i) || [,""])[1].trim();
+  const wPort = (snap.web?.match(/Port:\s+(\d+)/i) || [,""])[1].trim();
+
+  const secOn = /Enabled:\s+Yes/i.test(snap.sec || "");
+  const sHost = (snap.sec?.match(/Server:\s+(.+)/i) || [,""])[1].trim();
+  const sPort = (snap.sec?.match(/Port:\s+(\d+)/i) || [,""])[1].trim();
+
+  const autoOn = /Yes/i.test(snap.autostate || "");
+  const autoURL = (snap.auto?.match(/URL:\s+(.+)/i) || [,""])[1]?.trim();
+
+  // HTTP
+  if (webOn && wHost && wPort) {
+    cmds.push(`networksetup -setwebproxy ${svc} ${wHost} ${wPort}`);
+    cmds.push(`networksetup -setwebproxystate ${svc} on`);
+  } else {
+    cmds.push(`networksetup -setwebproxystate ${svc} off`);
+  }
+  // HTTPS
+  if (secOn && sHost && sPort) {
+    cmds.push(`networksetup -setsecurewebproxy ${svc} ${sHost} ${sPort}`);
+    cmds.push(`networksetup -setsecurewebproxystate ${svc} on`);
+  } else {
+    cmds.push(`networksetup -setsecurewebproxystate ${svc} off`);
+  }
+  // PAC
+  if (autoOn && autoURL) {
+    cmds.push(`networksetup -setautoproxyurl ${svc} "${autoURL.replace(/"/g, '\\"')}"`);
+    cmds.push(`networksetup -setautoproxystate ${svc} on`);
+  } else {
+    cmds.push(`networksetup -setautoproxystate ${svc} off`);
+  }
+  return cmds;
+}
+
+// ========= IPC：一键设置 / 恢复（只弹一次密码框）=========
+ipcMain.handle("set-system-proxy", async (_evt, { host, port }) => {
+  if (!isMac()) throw new Error("当前仅支持 macOS 系统代理设置。");
+  if (!host || !port) throw new Error("缺少代理地址或端口。");
+
+  await backupCurrentProxy();
+
+  const services = await listNetworkServices();
+  // 汇总所有命令到一个数组里，一次性执行
+  const cmds = [];
+  for (const s of services) {
+    // 忽略被禁用服务（通常 list 已过滤，此处再次保护）
+    if (s.startsWith("*")) continue;
+    cmds.push(...buildSetCommandsForService(s, host, port));
+  }
+  await runAsAdminBatch(cmds); // ★ 只调用一次 osascript
+  return true;
+});
+
+ipcMain.handle("restore-system-proxy", async () => {
+  if (!isMac()) throw new Error("当前仅支持 macOS 系统代理设置。");
+  if (!fs.existsSync(proxyBackupFile)) throw new Error("没有找到备份，无法恢复。");
+
+  const snap = JSON.parse(fs.readFileSync(proxyBackupFile, "utf8"));
+  const data = snap.data || {};
+  const services = await listNetworkServices();
+
+  const cmds = [];
+  for (const s of services) {
+    if (data[s]) cmds.push(...buildRestoreCommandsForService(s, data[s]));
+  }
+  if (cmds.length === 0) return true;
+  await runAsAdminBatch(cmds); // ★ 只调用一次 osascript
+  return true;
+});

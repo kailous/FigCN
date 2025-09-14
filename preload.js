@@ -18,4 +18,8 @@ contextBridge.exposeInMainWorld("mitm", {
     ipcRenderer.on("mitm-log", listener);
     return () => ipcRenderer.removeListener("mitm-log", listener);
   },
+
+  // 系统代理
+  setSystemProxy: (host, port) => ipcRenderer.invoke("set-system-proxy", { host, port }),
+  restoreSystemProxy: () => ipcRenderer.invoke("restore-system-proxy"),
 });
