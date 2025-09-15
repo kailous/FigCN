@@ -14,6 +14,7 @@ let mainWindow = null;
 let mitmProc = null;
 let stopTimer = null;
 
+// ---- 小工具 ----
 function resPath(...p) {
   return path.join(process.resourcesPath || "", ...p);
 }
@@ -24,6 +25,12 @@ function getVenvDir() {
 function getScriptPath(filename) {
   const p = resPath(filename);
   return fs.existsSync(p) ? p : null;
+}
+function sendLog(t) {
+  try { mainWindow?.webContents.send("mitm-log", String(t).endsWith("\n") ? String(t) : String(t) + "\n"); } catch {}
+}
+function q(a) {
+  return /\s/.test(a) ? `"${a.replace(/"/g, '\\"')}"` : a;
 }
 
 function createWindow() {
@@ -39,14 +46,10 @@ function createWindow() {
   mainWindow.loadFile("static/index.html");
 }
 app.whenReady().then(createWindow);
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
-});
+app.on("window-all-closed", () => { if (process.platform !== "darwin") app.quit(); });
 app.on("before-quit", () => {
   // 尝试优雅停止 mitm
-  if (mitmProc) {
-    try { mitmProc.kill("SIGINT"); } catch {}
-  }
+  if (mitmProc) { try { mitmProc.kill("SIGINT"); } catch {} }
 });
 
 // ---- 配置读写 ----
@@ -120,14 +123,8 @@ function probeHttpProxy(host, port, timeoutMs = 1200) {
         "CONNECT www.google.com:443 HTTP/1.1\r\nHost: www.google.com:443\r\n\r\n",
       );
     });
-    const to = setTimeout(() => {
-      socket.destroy();
-      resolve(false);
-    }, timeoutMs);
-    socket.once("error", () => {
-      clearTimeout(to);
-      resolve(false);
-    });
+    const to = setTimeout(() => { socket.destroy(); resolve(false); }, timeoutMs);
+    socket.once("error", () => { clearTimeout(to); resolve(false); });
     socket.once("data", (buf) => {
       clearTimeout(to);
       const ok = /^HTTP\/\d\.\d 200/i.test(String(buf));
@@ -192,30 +189,16 @@ ipcMain.handle("auto-detect-upstream", async (_evt, testUrl) => {
 
 // ---- 工具 ----
 function ensureExecutable(p) {
-  try {
-    fs.accessSync(p, fs.constants.X_OK);
-    return true;
-  } catch {
-    try {
-      fs.chmodSync(p, 0o755);
-      fs.accessSync(p, fs.constants.X_OK);
-      return true;
-    } catch {
-      return false;
-    }
+  try { fs.accessSync(p, fs.constants.X_OK); return true; }
+  catch {
+    try { fs.chmodSync(p, 0o755); fs.accessSync(p, fs.constants.X_OK); return true; }
+    catch { return false; }
   }
 }
 async function cmdExists(cmd) {
   const bin = process.platform === "win32" ? "where" : "which";
-  try {
-    const { stdout } = await execFileP(bin, [cmd]);
-    return Boolean(stdout && stdout.trim());
-  } catch {
-    return false;
-  }
-}
-function q(a) {
-  return /\s/.test(a) ? `"${a.replace(/"/g, '\\"')}"` : a;
+  try { const { stdout } = await execFileP(bin, [cmd]); return Boolean(stdout && stdout.trim()); }
+  catch { return false; }
 }
 
 // ---- 启动 MITM ----
@@ -236,20 +219,16 @@ ipcMain.handle("start-mitm", async (_evt, cfg) => {
   args.push("--verbose");
 
   // 仅拦 *.figma.com 和 kailous.github.io
-  args.push(
-    "--set",
-    "allow_hosts=^(.+\\.)?figma\\.com(:443)?$|^kailous\\.github\\.io(:443)?$",
-  );
+  args.push("--set", "allow_hosts=^(.+\\.)?figma\\.com(:443)?$|^kailous\\.github\\.io(:443)?$");
 
   const injector = getScriptPath("figcn_injector.py");
   if (injector) {
     args.push("-s", injector);
-    mainWindow?.webContents.send("mitm-log", `[脚本] 已加载：${injector}\n`);
+    sendLog(`[脚本] 已加载：${injector}`);
   }
 
   if (conf.extraArgs && conf.extraArgs.trim()) {
-    const extra =
-      conf.extraArgs.match(/\S+|"([^"]*)"/g)?.map((p) => p.replace(/^"|"$/g, "")) || [];
+    const extra = conf.extraArgs.match(/\S+|"([^"]*)"/g)?.map((p) => p.replace(/^"|"$/g, "")) || [];
     args.push(...extra);
   }
 
@@ -261,9 +240,13 @@ ipcMain.handle("start-mitm", async (_evt, cfg) => {
   const VENV_MITMDUMP = path.join(VENV_BIN, "mitmdump");
   const DUMP_MODULE = "mitmproxy.tools.dump";
 
- // ✅ 优先使用 venv/bin/mitmdump（更稳定），再回退到 python -m，再到系统
-  let launchCmd = null, launchArgs = null;
+  // 自检提示
+  const chkPy = `${VENV_PY} ${fs.existsSync(VENV_PY) ? "存在" : "缺失"}${ensureExecutable(VENV_PY) ? " (可执行)" : ""}`;
+  sendLog(`[检查] ${chkPy}`);
+  sendLog(`[检查] 进程架构: ${process.arch} | 平台: ${process.platform}`);
 
+  // ✅ 优先使用 venv/bin/mitmdump（更稳定），再回退到 python -m，再到系统
+  let launchCmd = null, launchArgs = null;
   if (fs.existsSync(VENV_MITMDUMP) && ensureExecutable(VENV_MITMDUMP)) {
     launchCmd = VENV_MITMDUMP;
     launchArgs = args;
@@ -280,56 +263,62 @@ ipcMain.handle("start-mitm", async (_evt, cfg) => {
     throw new Error("未找到可用的 mitmdump 或 python3。");
   }
 
-  // 打印自检
-  const chkPy = `${VENV_PY} ${fs.existsSync(VENV_PY) ? "存在" : "缺失"}${ensureExecutable(VENV_PY) ? " (可执行)" : ""}`;
-  const chkDump = `${VENV_MITMDUMP} ${fs.existsSync(VENV_MITMDUMP) ? "存在" : "缺失"}${ensureExecutable(VENV_MITMDUMP) ? " (可执行)" : ""}`;
-  mainWindow?.webContents.send("mitm-log", `[检查] ${chkPy}\n`);
-  mainWindow?.webContents.send("mitm-log", `[检查] ${chkDump}\n`);
-
   const opts = {
     cwd: process.resourcesPath,
     env: {
       ...process.env,
-      // 让内置 venv/bin 优先
       PATH: `${VENV_BIN}:${process.env.PATH || ""}`,
+      PYTHONNOUSERSITE: "1",
     },
     shell: false,
+
+    // ✅ 关键：让子进程脱离当前会话，避免 SIGHUP/tty 关闭导致退出
+    detached: true,
+    // ✅ 关键：不给 stdin（一些程序在 stdin 关闭/EOF 时会退出）
+    stdio: ["ignore", "pipe", "pipe"],
   };
 
-  const echo = `$ ${q(launchCmd)} ${launchArgs.map(q).join(" ")}\n`;
-  mainWindow?.webContents.send("mitm-log", echo);
+  const echo = `$ ${q(launchCmd)} ${launchArgs.map(q).join(" ")}`;
+  sendLog(echo);
 
+  const startTs = Date.now();
   mitmProc = spawn(launchCmd, launchArgs, opts);
-  mitmProc.stdout.on("data", (d) => mainWindow?.webContents.send("mitm-log", d.toString()));
-  mitmProc.stderr.on("data", (d) => mainWindow?.webContents.send("mitm-log", d.toString()));
-  mitmProc.on("error", (err) =>
-    mainWindow?.webContents.send("mitm-log", `[启动错误] ${String(err)}\n`),
-  );
+  try { mitmProc.unref(); } catch {}
+
+  mitmProc.stdout.on("data", (d) => sendLog(d.toString()));
+  mitmProc.stderr.on("data", (d) => sendLog(d.toString()));
+  mitmProc.on("error", (err) => sendLog(`[启动错误] ${String(err)}`));
   mitmProc.on("exit", (code, signal) => {
-    mainWindow?.webContents.send("mitm-log", `\n[mitm 退出] code=${code} signal=${signal}\n`);
+    const aliveMs = Date.now() - startTs;
+    sendLog(`\n[mitm 退出] code=${code} signal=${signal} (存活 ${aliveMs}ms)`);
+    if (code === 0 && aliveMs < 1500) {
+      sendLog(`[诊断] 进程过快退出。常见原因：
+- 子进程收到 SIGHUP（会话关闭/TTY 变化）；
+- stdin 被关闭导致退出；
+- 外部管控/安全软件结束了进程。
+已启用 detached + 无 stdin。若仍复现，请在终端手动执行上面一整行命令确认环境。`);
+    }
     mitmProc = null;
   });
 
+  sendLog("[Start] 代理已启动。");
   return true;
 });
 
 // ---- 停止 MITM（优雅 -> 强杀兜底）----
 function killMitmGracefully() {
   if (!mitmProc) return false;
-  try {
-    mitmProc.kill("SIGINT");
-  } catch {}
-  // 3 秒内没退出就 SIGKILL
+  try { mitmProc.kill("SIGINT"); } catch {}
   if (stopTimer) clearTimeout(stopTimer);
   stopTimer = setTimeout(() => {
-    if (mitmProc && !mitmProc.killed) {
-      try { mitmProc.kill("SIGKILL"); } catch {}
-    }
+    if (mitmProc && !mitmProc.killed) { try { mitmProc.kill("SIGKILL"); } catch {} }
   }, 3000);
   return true;
 }
 ipcMain.handle("stop-mitm", async () => {
-  return killMitmGracefully();
+  const ok = killMitmGracefully();
+  if (ok) sendLog("[Stop] 代理已停止。");
+  return ok;
 });
 
 // ========= 一次性提权执行多条命令（系统代理设置） =========
@@ -344,24 +333,15 @@ async function runAsAdminBatch(shellCmds /* string[] */) {
 
 // ========= networksetup & 备份 =========
 const proxyBackupFile = path.join(app.getPath("userData"), "proxy-backup.json");
-function isMac() {
-  return process.platform === "darwin";
-}
+function isMac() { return process.platform === "darwin"; }
 async function listNetworkServices() {
   const { stdout } = await execFileP("networksetup", ["-listallnetworkservices"]);
-  return stdout
-    .split("\n")
-    .map((s) => s.trim())
-    .filter((s) => s && !s.startsWith("An asterisk"));
+  return stdout.split("\n").map((s) => s.trim()).filter((s) => s && !s.startsWith("An asterisk"));
 }
 async function readServiceProxy(service) {
   const get = async (flag) => {
-    try {
-      const { stdout } = await execFileP("networksetup", [flag, service]);
-      return stdout;
-    } catch {
-      return "";
-    }
+    try { const { stdout } = await execFileP("networksetup", [flag, service]); return stdout; }
+    catch { return ""; }
   };
   const web = await get("-getwebproxy");
   const sec = await get("-getsecurewebproxy");
@@ -372,9 +352,7 @@ async function readServiceProxy(service) {
 async function backupCurrentProxy() {
   const services = await listNetworkServices();
   const data = {};
-  for (const s of services) {
-    data[s] = await readServiceProxy(s);
-  }
+  for (const s of services) data[s] = await readServiceProxy(s);
   fs.mkdirSync(path.dirname(proxyBackupFile), { recursive: true });
   fs.writeFileSync(proxyBackupFile, JSON.stringify({ ts: Date.now(), data }, null, 2));
 }
