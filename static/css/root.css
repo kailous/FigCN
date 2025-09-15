@@ -1,0 +1,31 @@
+/* 自定义变量库 */
+
+/* 基础变量 */
+:root {
+    --gap: 10px;
+    --font-size: 14px;
+}
+
+/* 配色方案 - 亮色模式 */
+@media (prefers-color-scheme: light) {
+    :root {
+        --bg-color: #fff;
+        --text-color: #000;
+        --border-color: #d1d5db;
+        --font-color: #000;
+        --hover-color: #f9fafb;
+        --card-bg-color: #fff;
+    }
+}
+
+/* 配色方案 - 暗色模式 */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg-color: #000;
+        --text-color: #fff;
+        --border-color: #374151;
+        --font-color: #fff;
+        --hover-color: #1f2937;
+        --card-bg-color: #1f2937;
+    }
+}

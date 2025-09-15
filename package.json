@@ -19,6 +19,7 @@
       "static/index.html",
       "static/js/renderer.js",
       "static/css/style.css",
+      "static/css/root.css",
       "node_modules/**"
     ],
     "extraResources": [

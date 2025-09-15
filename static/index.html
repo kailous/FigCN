@@ -12,6 +12,12 @@
   <!-- 服务器控制 -->
   <div class="card">
     <div class="row">
+      <span class="hint">
+      1. 启动代理后，请设置浏览器代理为你设定好的监听地址和端口。<br>
+      2. 第一次使用需要安装证书，请到 <a href="http://mitm.it/" target="_blank">证书下载</a> 下载并安装证书。<br>
+      </span>
+    </div>
+    <div class="row">
       <span class="label">监听地址</span>
       <input id="listenHost" type="text" placeholder="127.0.0.1" />
       <span class="label">端口</span>
@@ -19,7 +25,6 @@
       <button id="btnStart">启动代理</button>
       <button id="btnStop">停止代理</button>
     </div>
-    <div class="card">
       <!-- 系统代理 -->
       <div class="row">
         <span class="label">系统代理</span>
@@ -27,7 +32,6 @@
         <button id="btnRestoreSysProxy">恢复系统代理</button>
         <span class="hint">将系统 HTTP/HTTPS 代理设置为监听地址与端口（如 127.0.0.1:8080）。需要管理员授权。</span>
       </div>
-    </div>
     <!-- 上游代理 -->
     <div class="row">
       <label class="label">
@@ -39,7 +43,7 @@
     </div>
     <!-- 说明 -->
     <div class="hint">
-      说明：勾选“使用上游代理”后，输入框支持 <code>http://</code>、<code>https://</code>、<code>socks5://</code> 或 <code>socks4://</code>。
+      说明：勾选“使用上游代理”后，输入框支持 <code>http://</code>、<code>https://</code>、<code>socks5://</code> 或 <code>socks4://</code>。<br>
       点“侦测上游”会自动检测系统/PAC/常见端口，并把结果写入输入框（若检测到）。
     </div>
   </div>
@@ -51,7 +55,6 @@
         <option value="regular">regular（mitmdump）</option>
         <option value="mitmweb">mitmweb（可视化）</option>
       </select>
-      <span class="hint">目前默认使用白名单：仅 *.figma.com 与 kailous.github.io 会做 MITM。</span>
     </div>
     <div class="row">
       <span class="label">额外参数</span>
@@ -59,13 +62,12 @@
       <button id="btnSave">保存配置</button>
       <button id="btnReload">重新载入配置</button>
     </div>
+    <div class="row">
+      <span class="hint">目前默认使用白名单：仅 *.figma.com 与 kailous.github.io 会做 MITM。如果不知道这里是做什么的，就不要动它。</span>
+    </div>
   </div>
   <div class="row">
-    <span class="label">说明</span>
-    <span class="hint">
-      1. 启动代理后，请设置浏览器代理为你设定好的监听地址和端口。<br>
-      2. 第一次使用需要安装证书，请到 <a href="http://mitm.it/" target="_blank">证书下载</a> 下载并安装证书。<br>
-    </span>
+    <span class="label">日志输出</span>
   </div>
 
   <textarea id="log" readonly placeholder="代理日志输出..."></textarea>
