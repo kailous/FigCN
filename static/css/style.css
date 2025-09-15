@@ -78,3 +78,6 @@ textarea {
     color: #6b7280;
     font-size: 12px;
 }
+.hint a {
+    color: var(--hint-link-color);
+}

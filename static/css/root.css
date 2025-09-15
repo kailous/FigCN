@@ -15,6 +15,8 @@
         --font-color: #000;
         --hover-color: #f9fafb;
         --card-bg-color: #fff;
+        --hint-color: #6b7280;
+        --hint-link-color: #3b82f6;
     }
 }
 
@@ -27,5 +29,7 @@
         --font-color: #fff;
         --hover-color: #1f2937;
         --card-bg-color: #1f2937;
+        --hint-color: #6b7280;
+        --hint-link-color: #3b82f6;
     }
 }
