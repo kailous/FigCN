@@ -1,6 +1,6 @@
 {
   "name": "FigCN",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Figma 汉化代理助手（Electron + mitmproxy）",
   "main": "main.js",
   "productName": "FigCN",
@@ -23,12 +23,24 @@
       "node_modules/**"
     ],
     "extraResources": [
-      { "from": "venv", "to": "venv" },
-      { "from": "figcn_injector.py", "to": "figcn_injector.py" },
-      { "from": "figcn_rules.yaml", "to": "figcn_rules.yaml" }
+      {
+        "from": "venv",
+        "to": "venv"
+      },
+      {
+        "from": "figcn_injector.py",
+        "to": "figcn_injector.py"
+      },
+      {
+        "from": "figcn_rules.yaml",
+        "to": "figcn_rules.yaml"
+      }
     ],
     "mac": {
-      "target": ["dmg", "zip"],
+      "target": [
+        "dmg",
+        "zip"
+      ],
       "category": "public.app-category.developer-tools",
       "hardenedRuntime": false
     },
