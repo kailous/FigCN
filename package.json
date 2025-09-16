@@ -13,23 +13,27 @@
     "appId": "com.rainforest.figcn.beta",
     "productName": "FigCN(Beta)",
     "asar": true,
-    "icon": "icon/icon.icns",
     "compression": "store",
+    "icon": "icon/icon.icns",
 
     "files": [
       "main.js",
       "preload.js",
-      "static/index.html",
-      "static/js/renderer.js",
-      "static/css/style.css",
-      "static/css/root.css",
-      "node_modules/**"
+      "modules/**",
+      "static/**",
+      "icon/**",
+      "node_modules/**",
+      "!**/*.map",
+      "!**/test/**",
+      "!**/__tests__/**"
     ],
+
     "extraResources": [
       { "from": "vendor/mitmproxy.app", "to": "mitmproxy.app" },
-      { "from": "figcn_injector.py",   "to": "figcn_injector.py" },
-      { "from": "figcn_rules.yaml",    "to": "figcn_rules.yaml" }
+      { "from": "figcn_injector.py",    "to": "figcn_injector.py" },
+      { "from": "figcn_rules.yaml",     "to": "figcn_rules.yaml" }
     ],
+
     "mac": {
       "icon": "icon/icon.icns",
       "target": ["dmg", "zip"],
@@ -39,7 +43,9 @@
       "entitlementsInherit": "entitlements.mac.plist",
       "gatekeeperAssess": false
     },
-    "afterPack":  "scripts/afterPack.js",
+
+    "afterPack": "scripts/afterPack.js",
+
     "directories": {
       "buildResources": "build"
     }

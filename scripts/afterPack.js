@@ -1,35 +1,56 @@
 // scripts/afterPack.js
+// 仅做必要的权限修正，确保内置 mitmproxy.app 的可执行文件有 +x。
 const fs = require("fs");
 const path = require("path");
-const { execFileSync } = require("child_process");
 
-function safeChmod(p, mode) {
-  try { fs.chmodSync(p, mode); } catch {}
+function chmodIfExists(p) {
+  try {
+    if (fs.existsSync(p)) {
+      fs.chmodSync(p, 0o755);
+      console.log("[afterPack] chmod +x:", p);
+    }
+  } catch (e) {
+    console.warn("[afterPack] chmod failed:", p, e.message);
+  }
 }
-function deQuarantine(p) {
-  try { execFileSync("xattr", ["-dr", "com.apple.quarantine", p]); } catch {}
+
+// 递归给 MacOS 目录下的可执行文件加权限
+function chmodExecutablesIn(dir) {
+  if (!fs.existsSync(dir)) return;
+  for (const name of fs.readdirSync(dir)) {
+    const p = path.join(dir, name);
+    const st = fs.statSync(p);
+    if (st.isFile()) {
+      chmodIfExists(p);
+    }
+  }
 }
 
 exports.default = async function afterPack(context) {
-  const resources = context.appOutDir
+  const resourcesDir = context.appOutDir
     ? path.join(context.appOutDir, `${context.packager.appInfo.productFilename}.app`, "Contents", "Resources")
-    : path.join(context.packager.info.projectDir, "dist", "tmp", "Resources");
+    : path.join(context.electronPlatformName === "darwin" ? "dist/mac-arm64" : "dist", "Contents", "Resources");
 
-  const mitmApp = path.join(resources, "mitmproxy.app");
-  const mitmDump = path.join(mitmApp, "Contents", "MacOS", "mitmdump");
-  const mitmProxy = path.join(mitmApp, "Contents", "MacOS", "mitmproxy");
-  const mitmWeb = path.join(mitmApp, "Contents", "MacOS", "mitmweb");
+  console.log("[afterPack] resources:", resourcesDir);
 
-  // 去掉隔离标记，避免运行时被 Gatekeeper 秒杀（SIGKILL）
-  deQuarantine(mitmApp);
+  // 内置 mitmproxy.app 路径
+  const mitmApp = path.join(resourcesDir, "mitmproxy.app");
+  const mitmMacOSDir = path.join(mitmApp, "Contents", "MacOS");
 
-  // 确保可执行位
-  safeChmod(mitmDump, 0o755);
-  safeChmod(mitmProxy, 0o755);
-  safeChmod(mitmWeb, 0o755);
+  // 关键：给 mitmproxy.app 的二进制加可执行
+  chmodExecutablesIn(mitmMacOSDir);
 
-  // 也给注入脚本一个一致的权限
-  safeChmod(path.join(resources, "figcn_injector.py"), 0o644);
+  // 你的注入脚本也确保可读（可不加；这里保持一行记录）
+  const injector = path.join(resourcesDir, "figcn_injector.py");
+  try {
+    if (fs.existsSync(injector)) {
+      fs.chmodSync(injector, 0o644);
+      console.log("[afterPack] set 644:", injector);
+    }
+  } catch (e) {
+    console.warn("[afterPack] injector chmod failed:", e.message);
+  }
 
-  console.log("[afterPack] mitmproxy.app de-quarantined & binaries chmod +x");
+  // 提示：如需在分发前去除隔离标记，可手动执行（不在打包阶段自动跑）：
+  //   xattr -dr com.apple.quarantine "<App>.app"
 };
