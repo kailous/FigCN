@@ -1,6 +1,6 @@
 {
   "name": "FigCN",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "description": "Figma 汉化代理助手（Electron + mitmproxy）",
   "main": "main.js",
   "productName": "FigCN",
@@ -13,6 +13,7 @@
     "appId": "com.rainforest.figcn.beta",
     "productName": "FigCN(Beta)",
     "asar": true,
+    "icon": "icon/icon.icns",
     "compression": "store",
 
     "files": [
@@ -30,6 +31,7 @@
       { "from": "figcn_rules.yaml",    "to": "figcn_rules.yaml" }
     ],
     "mac": {
+      "icon": "icon/icon.icns",
       "target": ["dmg", "zip"],
       "category": "public.app-category.developer-tools",
       "hardenedRuntime": true,

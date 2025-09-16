@@ -13,6 +13,7 @@ function resPath(...p) {
 
 function createWindow() {
   mainWindow = new BrowserWindow({
+    icon: resPath('icon.icns'),
     width: 960,
     height: 700,
     webPreferences: {
