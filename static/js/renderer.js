@@ -14,6 +14,15 @@ if (window.mitm?.onLog) {
   window.mitm.onLog((line) => appendLog(line));
 }
 
+// 只读判断：系统代理是否指向 host:port
+function isSelfProxy(sysProxy, host, port) {
+  if (!sysProxy || !host || !port) return false;
+  const eq = (h, p) => h === host && Number(p) === Number(port);
+  const hitHttp  = sysProxy.http?.enabled  && eq(sysProxy.http.host,  sysProxy.http.port);
+  const hitHttps = sysProxy.https?.enabled && eq(sysProxy.https.host, sysProxy.https.port);
+  return Boolean(hitHttp || hitHttps);
+}
+
 // 把表单状态 -> 配置对象（不包含 mode/extraArgs）
 function readFormToConfig(baseCfg) {
   const cfg = { ...(baseCfg || {}) };
@@ -60,7 +69,52 @@ $("#upstreamToggle")?.addEventListener("change", async () => {
 
   if (!window.mitm?.loadConfig || !window.mitm?.saveConfig) return;
   const cfg = await window.mitm.loadConfig();
-  await window.mitm.saveConfig(on ? cfg : { ...cfg, upstream: "" });
+
+  if (!on) {
+    // 关闭：清空上游并保存
+    await window.mitm.saveConfig({ ...cfg, upstream: "" });
+    return;
+  }
+
+  // 勾选：先检查系统代理是否指向本机监听（避免自指环路）
+  try {
+    if (window.mitm?.getSystemProxy) {
+      const sysProxy = await window.mitm.getSystemProxy();
+      const host = ($("#listenHost")?.value || cfg.listenHost || "127.0.0.1").trim();
+      const port = Number($("#port")?.value || cfg.port || 8080);
+      if (isSelfProxy(sysProxy, host, port)) {
+        // 回滚 UI 状态
+        $("#upstreamToggle").checked = false;
+        if ($("#upstreamInput")) $("#upstreamInput").disabled = true;
+        if ($("#btnDetect")) $("#btnDetect").disabled = true;
+
+        appendLog("[上游] 当前系统代理已指向本机监听端口，避免自指环路。请先关闭系统代理或点击“停止”自动恢复。");
+        alert("当前系统代理已指向本机监听端口，避免自指环路。\n请先关闭系统代理或点击“停止”自动恢复，再勾选上游代理。");
+        return;
+      }
+    }
+  } catch (e) {
+    // 查询失败不致命，继续进行侦测
+    appendLog("[上游] 检查系统代理失败：" + String(e));
+  }
+
+  // 自动侦测上游代理并保存
+  if (window.mitm?.autoDetectUpstream) {
+    appendLog("[AutoDetect] 正在侦测系统/PAC/常见端口…");
+    try {
+      const { upstream, error } = await window.mitm.autoDetectUpstream("https://www.figma.com/");
+      if (upstream) {
+        if ($("#upstreamInput")) $("#upstreamInput").value = upstream;
+        appendLog(`[AutoDetect] 发现上游代理：${upstream}`);
+        await window.mitm.saveConfig({ ...cfg, upstream });
+      } else {
+        appendLog(`[AutoDetect] 未发现可用上游${error ? "：" + error : ""}`);
+        // 没发现上游也要保存“开启但值为空”的状态吗？这里不强制保存，留在输入框由用户填
+      }
+    } catch (e) {
+      appendLog(`[AutoDetect] 失败：${String(e)}`);
+    }
+  }
 });
 
 // 侦测上游代理（自动写回并保存）
@@ -174,5 +228,15 @@ $("#btnRestoreSysProxy")?.addEventListener("click", async () => {
     appendLog("[系统代理] 已恢复。");
   } catch (e) {
     appendLog("[系统代理] 恢复失败：" + String(e));
+  }
+});
+
+document.getElementById("btnInstallCA")?.addEventListener("click", async () => {
+  try {
+    appendLog("[证书] 正在生成并安装根证书（需要一次系统授权）...");
+    const res = await window.mitm.installCA();
+    appendLog(`[证书] 安装完成：${res.caFile}`);
+  } catch (e) {
+    appendLog("[证书] 安装失败：" + String(e));
   }
 });

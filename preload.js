@@ -4,6 +4,11 @@ const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("mitm", {
   loadConfig: () => ipcRenderer.invoke("load-config"),
   saveConfig: (cfg) => ipcRenderer.invoke("save-config", cfg),
+  // === 新增：查询系统代理（只读）
+  getSystemProxy: () => ipcRenderer.invoke("get-system-proxy"),
+  installCA: () => ipcRenderer.invoke('install-mitm-ca'),
+  openKeychainAccess: () => ipcRenderer.invoke('open-keychain-access'),
+  checkCA: () => ipcRenderer.invoke('check-mitm-ca'),
 
   start: (cfg) => ipcRenderer.invoke("start-mitm", cfg),
   stop: () => ipcRenderer.invoke("stop-mitm"),
@@ -23,3 +28,4 @@ contextBridge.exposeInMainWorld("mitm", {
   setSystemProxy: (host, port) => ipcRenderer.invoke("set-system-proxy", { host, port }),
   restoreSystemProxy: () => ipcRenderer.invoke("restore-system-proxy"),
 });
+

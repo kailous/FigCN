@@ -6,30 +6,43 @@
     --font-size: 14px;
 }
 
+/* 颜色库 */
+:root {
+    --highlight-color: hsl(240, 80%, 50%, 1.0);
+    --overlay-color: hsl(240, 80%, 50%, 0.3);
+    --black-color: hsl(0, 0%, 0%, 1.0);
+    --white-color: hsl(0, 0%, 100%, 1.0);
+    --dark-grey-color: hsl(240, 15%, 15%, 1.0);
+    --light-grey-color: hsl(240, 15%, 75%);
+}
+
 /* 配色方案 - 亮色模式 */
 @media (prefers-color-scheme: light) {
     :root {
-        --bg-color: #fff;
-        --text-color: #000;
-        --border-color: #d1d5db;
-        --font-color: #000;
-        --hover-color: #f9fafb;
-        --card-bg-color: #fff;
+        --bg-color: var(--white-color);
+        --text-color: var(--black-color);
+        --button-bg-color: var(--light-grey-color);
+        --textarea-bg-color: var(--light-grey-color);
+        --input-bg-color: var(--light-grey-color);
+        --hover-color: var(--overlay-color);
         --hint-color: #6b7280;
-        --hint-link-color: #3b82f6;
+        --hint-link-color: var(--highlight-color);
+        --focus-color: var(--highlight-color);
     }
 }
 
 /* 配色方案 - 暗色模式 */
 @media (prefers-color-scheme: dark) {
     :root {
-        --bg-color: #000;
-        --text-color: #fff;
-        --border-color: #374151;
-        --font-color: #fff;
-        --hover-color: #1f2937;
-        --card-bg-color: #1f2937;
+        --bg-color: var(--black-color);
+        --text-color: var(--white-color);
+        --button-bg-color: var(--dark-grey-color);
+        --special-button-bg-color: var(--highlight-color);
+        --textarea-bg-color: var(--dark-grey-color);
+        --input-bg-color: var(--dark-grey-color);
+        --hover-color: var(--overlay-color);
         --hint-color: #6b7280;
-        --hint-link-color: #3b82f6;
+        --hint-link-color: var(--highlight-color);
+        --focus-color: var(--highlight-color);
     }
 }

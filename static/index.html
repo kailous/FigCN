@@ -5,74 +5,63 @@
   <meta charset="UTF-8" />
   <title>FigCN 控制面板</title>
   <link rel="stylesheet" href="css/style.css" />
+  <script src="js/icons.js"></script>
 </head>
 
 <body>
-  <h1>FigCN 控制面板</h1>
-  <!-- 服务器控制 -->
-  <div class="card">
+  <div id="left">
+    <h1>FigCN 控制面板</h1>
     <!-- 上游代理 -->
-    <div class="row">
-      <label class="label">
+    <div class="card">
+      <div class="row">
+      <label class="row">
         <input id="upstreamToggle" type="checkbox" />
-        使用上游代理
+        <h3>上游代理</h3>
       </label>
-      <input id="upstreamInput" type="text" placeholder="例：http://127.0.0.1:7890 或 socks5://127.0.0.1:1080" disabled />
-      <button id="btnDetect" disabled>侦测上游</button>
-      <div class="hint">
-      说明：勾选“使用上游代理”后，输入框支持 <code>http://</code>、<code>https://</code>、<code>socks5://</code> 或
-      <code>socks4://</code>。<br>
-      点“侦测上游”会自动检测系统/PAC/常见端口，并把结果写入输入框（若检测到）。
-    </div>
+      <input id="upstreamInput" type="text" placeholder="http://127.0.0.1:7890"
+          disabled />
+        <button id="btnDetect" disabled title="侦测上游"><iconpark-icon name="aiming"></iconpark-icon>侦测上游</button>
+      </div>
+      <div class="row">
+        <span class="hint">勾选“使用上游代理”后，输入框支持 <code>http://</code>、<code>https://</code>、<code>socks5://</code> 或
+          <code>socks4://</code>。点“侦测上游”会自动检测系统/PAC/常见端口，并把结果写入输入框（若检测到）。</span>
+      </div>
     </div>
     <!-- 监听地址 -->
-    <div class="row">
-      <span class="label">监听地址</span>
-      <input id="listenHost" type="text" placeholder="127.0.0.1" />
-      <span class="label">端口</span>
-      <input id="port" type="number" placeholder="8080" style="width:100px" />
-      <button id="btnStart">启动代理</button>
-      <button id="btnStop">停止代理</button>
+    <div class="card">
+      <div class="row">
+        <h3>监听地址</h3>
+        <input id="listenHost" type="text" placeholder="127.0.0.1" />
+      </div>
+      <div class="row">
+        <h3>端口</h3>
+        <input id="port" type="number" placeholder="8080"/>
+      </div>
+      <div class="row">
+        <button id="btnStart" class="special row"><iconpark-icon name="power"></iconpark-icon>启动代理</button>
+        <button id="btnStop" class="row"><iconpark-icon name="close-one"></iconpark-icon>停止代理</button>
+      </div>
     </div>
     <!-- 系统代理 -->
-    <div class="row">
-      <span class="label">系统代理</span>
-      <button id="btnSetSysProxy">一键设置为本地代理(应用汉化)</button>
-      <button id="btnRestoreSysProxy">恢复系统代理</button>
+    <div class="card">
+      <div class="row">
+        <h3>系统代理</h3>
+        <button id="btnSetSysProxy" class="row">设为本地代理</button>
+        <button id="btnRestoreSysProxy" class="row">恢复系统代理</button>
+      </div>
       <span class="hint">将系统 HTTP/HTTPS 代理设置为监听地址与端口（如 127.0.0.1:8080）。需要管理员授权。</span>
     </div>
-    <div class="row">
+    <div class="card">
+      <button id="btnInstallCA">一键安装并信任证书</button>
       <span class="hint">
-        1. 启动代理后，请设置浏览器代理为你设定好的监听地址和端口。<br>
-        2. 第一次使用需要安装证书，请到 <a href="http://mitm.it/" target="_blank">证书下载</a> 下载并安装证书。<br>
+        证书只需安装一次，如果安装失败请手动安装证书。<br>
+        手动安装证书请参考 <a href="https://docs.mitmproxy.org/stable/concepts/certificates/" target="_blank">mitmproxy 官方文档</a>。
       </span>
     </div>
   </div>
-
-  <!-- <div class="card">
-    <div class="row">
-      <span class="label">模式</span>
-      <select id="mode">
-        <option value="regular">regular（mitmdump）</option>
-        <option value="mitmweb">mitmweb（可视化）</option>
-      </select>
-    </div>
-    <div class="row">
-      <span class="label">额外参数</span>
-      <input id="extraArgs" type="text" placeholder='可选，例如：--ssl-insecure' style="min-width:360px" />
-      <button id="btnSave">保存配置</button>
-      <button id="btnReload">重新载入配置</button>
-    </div>
-    <div class="row">
-      <span class="hint">目前默认使用白名单：仅 *.figma.com 与 kailous.github.io 会做 MITM。如果不知道这里是做什么的，就不要动它。</span>
-    </div>
-  </div> -->
-  <div class="row">
-    <span class="label">日志输出</span>
+  <div id="right">
+    <textarea id="log" readonly placeholder="代理日志输出..."></textarea>
   </div>
-
-  <textarea id="log" readonly placeholder="代理日志输出..."></textarea>
-
   <script src="js/renderer.js"></script>
 </body>
 

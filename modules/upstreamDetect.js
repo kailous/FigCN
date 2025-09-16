@@ -1,12 +1,10 @@
 // modules/upstreamDetect.js
-// 检测上游代理
-
 const os = require("os");
 const http = require("http");
 const https = require("https");
 const net = require("net");
-const { promisify } = require("util");
 const { execFile } = require("child_process");
+const { promisify } = require("util");
 const execFileP = promisify(execFile);
 
 function fetchText(url) {
@@ -16,9 +14,7 @@ function fetchText(url) {
       if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
         return resolve(fetchText(res.headers.location));
       }
-      let data = "";
-      res.on("data", (c) => (data += c));
-      res.on("end", () => resolve(data));
+      let data = ""; res.on("data", c => data += c); res.on("end", () => resolve(data));
     }).on("error", reject);
   });
 }
@@ -26,18 +22,20 @@ function fetchText(url) {
 async function resolveFromPAC(pacUrl, testUrl) {
   let createPacResolver;
   try { createPacResolver = require("pac-resolver"); } catch { return null; }
-  const pacText = await fetchText(pacUrl);
-  const FindProxyForURL = createPacResolver(pacText);
-  const rule = await FindProxyForURL(testUrl || "https://www.figma.com/");
-  const firstRaw = (rule || "").split(";")[0].trim();
-  const FIRST = firstRaw.toUpperCase();
-  if (FIRST.startsWith("PROXY ")) return `http://${firstRaw.slice(6).trim()}`;
-  if (FIRST.startsWith("HTTPS ")) return `https://${firstRaw.slice(6).trim()}`;
-  if (FIRST.startsWith("SOCKS")) {
-    const hp = firstRaw.split(/\s+/)[1];
-    const ver = FIRST.startsWith("SOCKS5") ? "socks5" : "socks4";
-    return `${ver}://${hp}`;
-  }
+  try {
+    const pacText = await fetchText(pacUrl);
+    const FindProxyForURL = createPacResolver(pacText);
+    const rule = await FindProxyForURL(testUrl || "https://www.figma.com/");
+    const firstRaw = (rule || "").split(";")[0].trim();
+    const FIRST = firstRaw.toUpperCase();
+    if (FIRST.startsWith("PROXY ")) return `http://${firstRaw.slice(6).trim()}`;
+    if (FIRST.startsWith("HTTPS ")) return `https://${firstRaw.slice(6).trim()}`;
+    if (FIRST.startsWith("SOCKS")) {
+      const hp = firstRaw.split(/\s+/)[1];
+      const ver = FIRST.startsWith("SOCKS5") ? "socks5" : "socks4";
+      return `${ver}://${hp}`;
+    }
+  } catch { /* ignore */ }
   return null;
 }
 
@@ -48,12 +46,7 @@ function probeHttpProxy(host, port, timeoutMs = 1200) {
     });
     const to = setTimeout(() => { socket.destroy(); resolve(false); }, timeoutMs);
     socket.once("error", () => { clearTimeout(to); resolve(false); });
-    socket.once("data", (buf) => {
-      clearTimeout(to);
-      const ok = /^HTTP\/\d\.\d 200/i.test(String(buf));
-      socket.destroy();
-      resolve(ok);
-    });
+    socket.once("data", (buf) => { clearTimeout(to); const ok = /^HTTP\/\d\.\d 200/i.test(String(buf)); socket.destroy(); resolve(ok); });
   });
 }
 
@@ -62,7 +55,7 @@ async function getSystemProxyCandidate(testUrl) {
     try {
       const { stdout } = await execFileP("scutil", ["--proxy"]);
       const kv = {};
-      stdout.split("\n").forEach((line) => {
+      stdout.split("\n").forEach(line => {
         const m = line.match(/^\s*(\S+)\s*:\s*(.+)\s*$/);
         if (m) kv[m[1]] = m[2];
       });
@@ -70,11 +63,9 @@ async function getSystemProxyCandidate(testUrl) {
         const pac = await resolveFromPAC(kv.ProxyAutoConfigURLString.trim(), testUrl);
         if (pac) return pac;
       }
-      if (kv.HTTPSEnable === "1" && kv.HTTPSProxy && kv.HTTPSPort)
-        return `http://${kv.HTTPSProxy}:${kv.HTTPSPort}`;
-      if (kv.HTTPEnable === "1" && kv.HTTPProxy && kv.HTTPPort)
-        return `http://${kv.HTTPProxy}:${kv.HTTPPort}`;
-    } catch {}
+      if (kv.HTTPSEnable === "1" && kv.HTTPSProxy && kv.HTTPSPort) return `http://${kv.HTTPSProxy}:${kv.HTTPSPort}`;
+      if (kv.HTTPEnable === "1" && kv.HTTPProxy && kv.HTTPPort)   return `http://${kv.HTTPProxy}:${kv.HTTPPort}`;
+    } catch { /* ignore */ }
   }
   return null;
 }
@@ -92,7 +83,7 @@ async function probeLocalCandidates() {
       const { hostname, port } = new URL(url);
       const ok = await probeHttpProxy(hostname, Number(port));
       if (ok) return url;
-    } catch {}
+    } catch { /* ignore */ }
   }
   return null;
 }
@@ -103,9 +94,9 @@ async function autoDetectUpstream(testUrl = "https://www.figma.com/") {
     if (sys) return { upstream: sys };
     const local = await probeLocalCandidates();
     if (local) return { upstream: local };
-    return { upstream: null };
+    return { upstream: "", error: null };
   } catch (e) {
-    return { upstream: null, error: String(e) };
+    return { upstream: "", error: String(e) };
   }
 }
 
