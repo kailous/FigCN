@@ -22,3 +22,9 @@ Figma 汉化代理助手（Electron + mitmproxy）
    ```
    npm run build
    ```
+
+5. 测试汉化
+   ```
+   curl -x http://localhost:8080 https://www.figma.com/webpack-artifacts/assets/figma_app-d2f511861c52ac4d.min.en.json.br
+
+   ```

@@ -30,8 +30,7 @@
 
     "extraResources": [
       { "from": "vendor/mitmproxy.app", "to": "mitmproxy.app" },
-      { "from": "figcn_injector.py",    "to": "figcn_injector.py" },
-      { "from": "figcn_rules.yaml",     "to": "figcn_rules.yaml" }
+      { "from": "figcn_injector.py",    "to": "figcn_injector.py" }
     ],
 
     "mac": {

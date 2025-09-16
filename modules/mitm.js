@@ -36,11 +36,12 @@ async function start(cfg, onLog /* (line) => void */) {
   if (conf.listenHost) args.push("--listen-host", String(conf.listenHost));
   if (conf.port) args.push("-p", String(conf.port));
 
-  args.push("--set", "keepserving=true");
-  args.push("--set", "termlog_verbosity=debug", "--set", "flow_detail=2");
-  args.push("--verbose");
+  args.push("--set", "keepserving=true"); // 保持服务运行，不退出
+  args.push("--set", "termlog_verbosity=error"); // 只打印错误日志
+  args.push("--set", "flow_detail=0"); // 不打印详细的请求响应详情
+  // args.push("--quiet"); // 不打印详细日志
   args.push("--set", "allow_hosts=^(.+\\.)?figma\\.com(:443)?$|^kailous\\.github\\.io(:443)?$");
-  args.push("-s", injector);
+  args.push("-s", injector); // 注入脚本
 
   if (conf.extraArgs && conf.extraArgs.trim()) {
     const extra = conf.extraArgs.match(/\S+|"([^"]*)"/g)?.map(p => p.replace(/^"|"$/g, "")) || [];
