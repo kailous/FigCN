@@ -11,6 +11,16 @@
   <h1>FigCN 控制面板</h1>
   <!-- 服务器控制 -->
   <div class="card">
+    <!-- 上游代理 -->
+    <div class="row">
+      <label class="label">
+        <input id="upstreamToggle" type="checkbox" />
+        使用上游代理
+      </label>
+      <input id="upstreamInput" type="text" placeholder="例：http://127.0.0.1:7890 或 socks5://127.0.0.1:1080" disabled />
+      <button id="btnDetect" disabled>侦测上游</button>
+    </div>
+    <!-- 监听地址 -->
     <div class="row">
       <span class="label">监听地址</span>
       <input id="listenHost" type="text" placeholder="127.0.0.1" />
@@ -31,15 +41,6 @@
         1. 启动代理后，请设置浏览器代理为你设定好的监听地址和端口。<br>
         2. 第一次使用需要安装证书，请到 <a href="http://mitm.it/" target="_blank">证书下载</a> 下载并安装证书。<br>
       </span>
-    </div>
-    <!-- 上游代理 -->
-    <div class="row">
-      <label class="label">
-        <input id="upstreamToggle" type="checkbox" />
-        使用上游代理
-      </label>
-      <input id="upstreamInput" type="text" placeholder="例：http://127.0.0.1:7890 或 socks5://127.0.0.1:1080" disabled />
-      <button id="btnDetect" disabled>侦测上游</button>
     </div>
     <!-- 说明 -->
     <div class="hint">

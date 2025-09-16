@@ -1,3 +1,5 @@
+// renderer.js  —— 启动自动设置系统代理 / 停止自动恢复
+
 // 小工具
 const $ = (sel) => document.querySelector(sel);
 const appendLog = (t) => {
@@ -12,23 +14,22 @@ if (window.mitm?.onLog) {
   window.mitm.onLog((line) => appendLog(line));
 }
 
-// 把表单状态 -> 配置对象（已去掉 mode/extraArgs）
+// 把表单状态 -> 配置对象（mode/extraArgs 不再暴露到 UI，但结构兼容）
 function readFormToConfig(baseCfg) {
   const cfg = { ...(baseCfg || {}) };
   cfg.listenHost = ($("#listenHost")?.value || "").trim() || "127.0.0.1";
   cfg.port = Number($("#port")?.value || 8080);
 
-  // 上游代理开关逻辑
   const enabled = $("#upstreamToggle")?.checked;
   const val = ($("#upstreamInput")?.value || "").trim();
-  cfg.upstream = enabled && val ? val : ""; // 只有勾选且非空才传给后端
-  // extraArgs / mode 已移除
-  cfg.extraArgs = ""; 
-  cfg.mode = "regular";
+  cfg.upstream = enabled && val ? val : "";
+
+  cfg.extraArgs = "";   // 保持字段存在但不使用
+  cfg.mode = "regular"; // 保持字段存在但不使用
   return cfg;
 }
 
-// 配置 -> 表单（已去掉 mode/extraArgs）
+// 配置 -> 表单
 function writeConfigToForm(cfg) {
   if ($("#listenHost")) $("#listenHost").value = cfg.listenHost || "127.0.0.1";
   if ($("#port")) $("#port").value = cfg.port ?? 8080;
@@ -50,19 +51,18 @@ let bootCfg = null;
   writeConfigToForm(bootCfg);
 })();
 
-// 事件：开关上游代理
+// 开关上游代理
 $("#upstreamToggle")?.addEventListener("change", async () => {
   const on = $("#upstreamToggle").checked;
   if ($("#upstreamInput")) $("#upstreamInput").disabled = !on;
   if ($("#btnDetect")) $("#btnDetect").disabled = !on;
 
-  // 同步保存：如果关掉则清空 upstream
   if (!window.mitm?.loadConfig || !window.mitm?.saveConfig) return;
   const cfg = await window.mitm.loadConfig();
   await window.mitm.saveConfig(on ? cfg : { ...cfg, upstream: "" });
 });
 
-// 事件：侦测上游代理（自动写回）
+// 侦测上游代理（自动写回+保存）
 $("#btnDetect")?.addEventListener("click", async () => {
   if (!window.mitm?.autoDetectUpstream || !window.mitm?.loadConfig || !window.mitm?.saveConfig) return;
   $("#btnDetect").disabled = true;
@@ -70,9 +70,8 @@ $("#btnDetect")?.addEventListener("click", async () => {
   try {
     const { upstream, error } = await window.mitm.autoDetectUpstream("https://www.figma.com/");
     if (upstream) {
-      if ($("#upstreamInput")) $("#upstreamInput").value = upstream; // 自动填入
+      if ($("#upstreamInput")) $("#upstreamInput").value = upstream;
       appendLog(`[AutoDetect] 发现上游代理：${upstream}`);
-      // 顺便保存配置（保持勾选状态）
       const cfg = await window.mitm.loadConfig();
       await window.mitm.saveConfig({ ...cfg, upstream });
     } else {
@@ -85,14 +84,14 @@ $("#btnDetect")?.addEventListener("click", async () => {
   }
 });
 
-// 事件：启动
+// 启动：先保存配置 -> 启动 mitm -> 成功后自动设置系统代理
 $("#btnStart")?.addEventListener("click", async () => {
   if (!window.mitm?.start || !window.mitm?.loadConfig || !window.mitm?.saveConfig) return;
 
   const current = await window.mitm.loadConfig();
   const cfg = readFormToConfig(current);
 
-  // 简单校验（如果启用上游则校验协议）
+  // 校验上游协议
   if ($("#upstreamToggle")?.checked) {
     const u = cfg.upstream;
     if (u && !/^(https?|socks5?|socks4?):\/\//i.test(u)) {
@@ -102,26 +101,51 @@ $("#btnStart")?.addEventListener("click", async () => {
   }
 
   try {
-    await window.mitm.saveConfig(cfg); // 启动前保存
+    await window.mitm.saveConfig(cfg);
     const ok = await window.mitm.start(cfg);
     if (ok) appendLog("[Start] 代理已启动。");
+
+    // ★ 自动设置系统代理为本机监听地址
+    if (window.mitm?.setSystemProxy) {
+      const host = cfg.listenHost || "127.0.0.1";
+      const port = Number(cfg.port || 8080);
+      appendLog(`[系统代理] 正在设置为 ${host}:${port}（可能需要一次授权）...`);
+      try {
+        await window.mitm.setSystemProxy(host, port);
+        appendLog("[系统代理] 设置完成。");
+      } catch (e) {
+        appendLog("[系统代理] 设置失败：" + String(e));
+        // 可选：不打断使用，只提示
+      }
+    }
   } catch (e) {
     appendLog("[Start] 启动失败：" + e);
     alert("启动失败，详见日志。");
   }
 });
 
-// 事件：停止
+// 停止：停止 mitm -> 自动恢复系统代理
 $("#btnStop")?.addEventListener("click", async () => {
   if (!window.mitm?.stop) return;
   try {
     await window.mitm.stop();
   } finally {
     appendLog("[Stop] 代理已停止。");
+
+    // ★ 自动恢复系统代理
+    if (window.mitm?.restoreSystemProxy) {
+      appendLog("[系统代理] 正在恢复此前备份的系统代理设置...");
+      try {
+        await window.mitm.restoreSystemProxy();
+        appendLog("[系统代理] 已恢复。");
+      } catch (e) {
+        appendLog("[系统代理] 恢复失败：" + String(e));
+      }
+    }
   }
 });
 
-// 事件：保存配置
+// 保存配置
 $("#btnSave")?.addEventListener("click", async () => {
   if (!window.mitm?.loadConfig || !window.mitm?.saveConfig) return;
   const current = await window.mitm.loadConfig();
@@ -130,7 +154,7 @@ $("#btnSave")?.addEventListener("click", async () => {
   appendLog("[Config] 已保存。");
 });
 
-// 事件：重新载入配置
+// 重新载入配置
 $("#btnReload")?.addEventListener("click", async () => {
   if (!window.mitm?.loadConfig) return;
   const cfg = await window.mitm.loadConfig();
@@ -138,7 +162,7 @@ $("#btnReload")?.addEventListener("click", async () => {
   appendLog("[Config] 已从文件加载。");
 });
 
-// ========= 新增：系统代理 一键设置/恢复 =========
+// ========== 兼容：如果你仍保留了“手动设置/恢复系统代理”的按钮 ==========
 $("#btnSetSysProxy")?.addEventListener("click", async () => {
   if (!window.mitm?.setSystemProxy) {
     appendLog("[系统代理] 未暴露 setSystemProxy 接口，请检查 preload.js");
