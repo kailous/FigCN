@@ -1,14 +1,13 @@
 {
   "name": "FigCN",
-  "version": "1.2.2",
+  "version": "1.2.1",
   "description": "Figma 汉化代理助手（Electron + mitmproxy）",
   "main": "main.js",
   "productName": "FigCN",
   "author": "kailous",
   "scripts": {
     "start": "OS_ACTIVITY_MODE=disable ELECTRON_ENABLE_LOGGING=false electron .",
-    "predist": "node scripts/makeVenvPack.js",
-    "dist": "npm run predist && electron-builder -m"
+    "dist": "electron-builder -m"
   },
   "build": {
     "appId": "com.rainforest.figcn.beta",
@@ -19,28 +18,29 @@
     "files": [
       "main.js",
       "preload.js",
-      "modules/**",
       "static/index.html",
       "static/js/renderer.js",
       "static/css/style.css",
       "static/css/root.css",
       "node_modules/**"
     ],
-
     "extraResources": [
-      { "from": "venv_pack", "to": "venv" },
-      { "from": "figcn_injector.py", "to": "figcn_injector.py" },
-      { "from": "figcn_rules.yaml", "to": "figcn_rules.yaml" }
+      { "from": "vendor/mitmproxy.app", "to": "mitmproxy.app" },
+      { "from": "figcn_injector.py",   "to": "figcn_injector.py" },
+      { "from": "figcn_rules.yaml",    "to": "figcn_rules.yaml" }
     ],
-
     "mac": {
       "target": ["dmg", "zip"],
       "category": "public.app-category.developer-tools",
-      "hardenedRuntime": false,
+      "hardenedRuntime": true,
+      "entitlements": "entitlements.mac.plist",
+      "entitlementsInherit": "entitlements.mac.plist",
       "gatekeeperAssess": false
     },
-
-    "directories": { "buildResources": "build" }
+    "afterPack":  "scripts/afterPack.js",
+    "directories": {
+      "buildResources": "build"
+    }
   },
   "dependencies": {
     "pac-resolver": "^7.0.1"
