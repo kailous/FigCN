@@ -1,4 +1,6 @@
 // modules/config.js
+// 读取配置文件
+
 const { app } = require("electron");
 const fs = require("fs");
 const path = require("path");

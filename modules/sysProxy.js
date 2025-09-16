@@ -1,4 +1,6 @@
 // modules/sysProxy.js
+// 设置系统代理
+
 const { app } = require("electron");
 const fs = require("fs");
 const path = require("path");

@@ -1,4 +1,6 @@
 // modules/upstreamDetect.js
+// 检测上游代理
+
 const os = require("os");
 const http = require("http");
 const https = require("https");
