@@ -19,6 +19,11 @@
       </label>
       <input id="upstreamInput" type="text" placeholder="例：http://127.0.0.1:7890 或 socks5://127.0.0.1:1080" disabled />
       <button id="btnDetect" disabled>侦测上游</button>
+      <div class="hint">
+      说明：勾选“使用上游代理”后，输入框支持 <code>http://</code>、<code>https://</code>、<code>socks5://</code> 或
+      <code>socks4://</code>。<br>
+      点“侦测上游”会自动检测系统/PAC/常见端口，并把结果写入输入框（若检测到）。
+    </div>
     </div>
     <!-- 监听地址 -->
     <div class="row">
@@ -42,15 +47,9 @@
         2. 第一次使用需要安装证书，请到 <a href="http://mitm.it/" target="_blank">证书下载</a> 下载并安装证书。<br>
       </span>
     </div>
-    <!-- 说明 -->
-    <div class="hint">
-      说明：勾选“使用上游代理”后，输入框支持 <code>http://</code>、<code>https://</code>、<code>socks5://</code> 或
-      <code>socks4://</code>。<br>
-      点“侦测上游”会自动检测系统/PAC/常见端口，并把结果写入输入框（若检测到）。
-    </div>
   </div>
 
-  <div class="card">
+  <!-- <div class="card">
     <div class="row">
       <span class="label">模式</span>
       <select id="mode">
@@ -67,7 +66,7 @@
     <div class="row">
       <span class="hint">目前默认使用白名单：仅 *.figma.com 与 kailous.github.io 会做 MITM。如果不知道这里是做什么的，就不要动它。</span>
     </div>
-  </div>
+  </div> -->
   <div class="row">
     <span class="label">日志输出</span>
   </div>
