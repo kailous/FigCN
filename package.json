@@ -7,12 +7,15 @@
   "author": "kailous",
   "scripts": {
     "start": "OS_ACTIVITY_MODE=disable ELECTRON_ENABLE_LOGGING=false electron .",
-    "dist": "electron-builder -m"
+    "predist": "node scripts/makeVenvPack.js",
+    "dist": "npm run predist && electron-builder -m"
   },
   "build": {
     "appId": "com.rainforest.figcn.beta",
     "productName": "FigCN(Beta)",
-    "asar": false,
+    "asar": true,
+    "compression": "store",
+
     "files": [
       "main.js",
       "preload.js",
@@ -22,32 +25,21 @@
       "static/css/root.css",
       "node_modules/**"
     ],
+
     "extraResources": [
-      {
-        "from": "venv",
-        "to": "venv"
-      },
-      {
-        "from": "figcn_injector.py",
-        "to": "figcn_injector.py"
-      },
-      {
-        "from": "figcn_rules.yaml",
-        "to": "figcn_rules.yaml"
-      }
+      { "from": "venv_pack", "to": "venv" },
+      { "from": "figcn_injector.py", "to": "figcn_injector.py" },
+      { "from": "figcn_rules.yaml", "to": "figcn_rules.yaml" }
     ],
+
     "mac": {
-      "target": [
-        "dmg",
-        "zip"
-      ],
+      "target": ["dmg", "zip"],
       "category": "public.app-category.developer-tools",
-      "hardenedRuntime": false
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
     },
-    "afterPack": "scripts/afterPack.js",
-    "directories": {
-      "buildResources": "build"
-    }
+
+    "directories": { "buildResources": "build" }
   },
   "dependencies": {
     "pac-resolver": "^7.0.1"

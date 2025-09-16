@@ -14,25 +14,49 @@ let mainWindow = null;
 let mitmProc = null;
 let stopTimer = null;
 
-// ---- 小工具 ----
+// ------------------------- 基础工具 -------------------------
 function resPath(...p) {
   return path.join(process.resourcesPath || "", ...p);
 }
 function getVenvDir() {
-  const p = resPath("venv");
-  return fs.existsSync(p) ? p : null;
+  // 兼容 beforePack 把 symlink 解引用到 venv_pack 的情况
+  const p1 = resPath("venv_pack");
+  if (fs.existsSync(p1)) return p1;
+  const p2 = resPath("venv");
+  return fs.existsSync(p2) ? p2 : null;
 }
 function getScriptPath(filename) {
   const p = resPath(filename);
   return fs.existsSync(p) ? p : null;
 }
-function sendLog(t) {
-  try { mainWindow?.webContents.send("mitm-log", String(t).endsWith("\n") ? String(t) : String(t) + "\n"); } catch {}
-}
 function q(a) {
-  return /\s/.test(a) ? `"${a.replace(/"/g, '\\"')}"` : a;
+  return /\s/.test(a) ? `"${String(a).replace(/"/g, '\\"')}"` : String(a);
+}
+function ensureExecutable(p) {
+  try {
+    fs.accessSync(p, fs.constants.X_OK);
+    return true;
+  } catch {
+    try {
+      fs.chmodSync(p, 0o755);
+      fs.accessSync(p, fs.constants.X_OK);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
+async function cmdExists(cmd) {
+  const bin = process.platform === "win32" ? "where" : "which";
+  try {
+    const { stdout } = await execFileP(bin, [cmd]);
+    return Boolean(stdout && stdout.trim());
+  } catch {
+    return false;
+  }
 }
 
+// ------------------------- 窗口 -------------------------
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 960,
@@ -46,13 +70,16 @@ function createWindow() {
   mainWindow.loadFile("static/index.html");
 }
 app.whenReady().then(createWindow);
-app.on("window-all-closed", () => { if (process.platform !== "darwin") app.quit(); });
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") app.quit();
+});
 app.on("before-quit", () => {
-  // 尝试优雅停止 mitm
-  if (mitmProc) { try { mitmProc.kill("SIGINT"); } catch {} }
+  if (mitmProc) {
+    try { mitmProc.kill("SIGINT"); } catch {}
+  }
 });
 
-// ---- 配置读写 ----
+// ------------------------- 配置 -------------------------
 const CONFIG_FILE = path.join(app.getPath("userData"), "mitm-config.json");
 function defaultConfig() {
   return {
@@ -81,7 +108,7 @@ ipcMain.handle("save-config", async (_e, cfg) => {
   return true;
 });
 
-// ---- 上游代理自动探测 ----
+// ------------------------- 上游代理自动探测（保留） -------------------------
 async function resolveFromPAC(pacUrl, testUrl) {
   const fetchText = (url) =>
     new Promise((resolve, reject) => {
@@ -119,9 +146,7 @@ async function resolveFromPAC(pacUrl, testUrl) {
 function probeHttpProxy(host, port, timeoutMs = 1200) {
   return new Promise((resolve) => {
     const socket = net.connect({ host, port }, () => {
-      socket.write(
-        "CONNECT www.google.com:443 HTTP/1.1\r\nHost: www.google.com:443\r\n\r\n",
-      );
+      socket.write("CONNECT www.google.com:443 HTTP/1.1\r\nHost: www.google.com:443\r\n\r\n");
     });
     const to = setTimeout(() => { socket.destroy(); resolve(false); }, timeoutMs);
     socket.once("error", () => { clearTimeout(to); resolve(false); });
@@ -187,141 +212,178 @@ ipcMain.handle("auto-detect-upstream", async (_evt, testUrl) => {
   }
 });
 
-// ---- 工具 ----
-function ensureExecutable(p) {
-  try { fs.accessSync(p, fs.constants.X_OK); return true; }
-  catch {
-    try { fs.chmodSync(p, 0o755); fs.accessSync(p, fs.constants.X_OK); return true; }
-    catch { return false; }
-  }
-}
-async function cmdExists(cmd) {
-  const bin = process.platform === "win32" ? "where" : "which";
-  try { const { stdout } = await execFileP(bin, [cmd]); return Boolean(stdout && stdout.trim()); }
-  catch { return false; }
-}
-
-// ---- 启动 MITM ----
+// ------------------------- 启动 MITM（关键：参数 & 环境） -------------------------
 ipcMain.handle("start-mitm", async (_evt, cfg) => {
   if (mitmProc) throw new Error("mitm 已在运行");
-  const conf = { ...defaultConfig(), ...(cfg || {}) };
+  const conf = {
+    ...defaultConfig(),
+    ...(cfg || {}),
+  };
 
-  const args = [];
+  const venvDir = getVenvDir();
+  if (!venvDir) throw new Error("未找到 Resources/venv 或 venv_pack，请确认已被打包到 app Resources。");
+
+  const VENV_BIN = path.join(venvDir, "bin");
+  const VENV_PY = path.join(VENV_BIN, "python3");
+  const VENV_MITMDUMP = path.join(VENV_BIN, "mitmdump");
+
+  // 只拦 *.figma.com 与 kailous.github.io；日志更详细；keepserving 避免“空闲自动退出”
+  const argsBase = [];
   if (conf.upstream && conf.upstream.trim()) {
-    args.push("--mode", `upstream:${conf.upstream.trim()}`);
+    argsBase.push("--mode", `upstream:${conf.upstream.trim()}`);
   }
-  if (conf.listenHost) args.push("--listen-host", String(conf.listenHost));
-  if (conf.port) args.push("-p", String(conf.port));
-
-  // 更详细日志 + keepserving（避免“秒退”）
-  args.push("--set", "keepserving=true");
-  args.push("--set", "termlog_verbosity=debug", "--set", "flow_detail=2");
-  args.push("--verbose");
-
-  // 仅拦 *.figma.com 和 kailous.github.io
-  args.push("--set", "allow_hosts=^(.+\\.)?figma\\.com(:443)?$|^kailous\\.github\\.io(:443)?$");
+  if (conf.listenHost) argsBase.push("--listen-host", String(conf.listenHost));
+  if (conf.port) argsBase.push("-p", String(conf.port));
+  argsBase.push("--set", "keepserving=true");
+  argsBase.push("--set", "termlog_verbosity=debug", "--set", "flow_detail=2");
+  argsBase.push("--verbose");
+  argsBase.push("--set", "allow_hosts=^(.+\\.)?figma\\.com(:443)?$|^kailous\\.github\\.io(:443)?$");
 
   const injector = getScriptPath("figcn_injector.py");
   if (injector) {
-    args.push("-s", injector);
-    sendLog(`[脚本] 已加载：${injector}`);
+    argsBase.push("-s", injector);
+    mainWindow?.webContents.send("mitm-log", `[脚本] 已加载：${injector}\n`);
   }
 
+  // 额外参数（如果你在 UI 中保留了输入框）
   if (conf.extraArgs && conf.extraArgs.trim()) {
     const extra = conf.extraArgs.match(/\S+|"([^"]*)"/g)?.map((p) => p.replace(/^"|"$/g, "")) || [];
-    args.push(...extra);
+    argsBase.push(...extra);
   }
 
-  const venvDir = getVenvDir();
-  if (!venvDir) throw new Error("未找到 Resources/venv，请确认 extraResources 已包含 venv。");
+  // 自检打印
+  const pyOk = fs.existsSync(VENV_PY) && ensureExecutable(VENV_PY);
+  const dumpOk = fs.existsSync(VENV_MITMDUMP) && ensureExecutable(VENV_MITMDUMP);
+  mainWindow?.webContents.send("mitm-log", `[检查] ${VENV_PY} ${pyOk ? "存在 (可执行)" : "缺失"}\n`);
+  mainWindow?.webContents.send("mitm-log", `[检查] 进程架构: ${process.arch} | 平台: ${process.platform}\n`);
 
-  const VENV_BIN = resPath("venv", "bin");
-  const VENV_PY = path.join(VENV_BIN, "python3");
-  const VENV_MITMDUMP = path.join(VENV_BIN, "mitmdump");
-  const DUMP_MODULE = "mitmproxy.tools.dump";
-
-  // 自检提示
-  const chkPy = `${VENV_PY} ${fs.existsSync(VENV_PY) ? "存在" : "缺失"}${ensureExecutable(VENV_PY) ? " (可执行)" : ""}`;
-  sendLog(`[检查] ${chkPy}`);
-  sendLog(`[检查] 进程架构: ${process.arch} | 平台: ${process.platform}`);
-
-  // ✅ 优先使用 venv/bin/mitmdump（更稳定），再回退到 python -m，再到系统
-  let launchCmd = null, launchArgs = null;
-  if (fs.existsSync(VENV_MITMDUMP) && ensureExecutable(VENV_MITMDUMP)) {
-    launchCmd = VENV_MITMDUMP;
-    launchArgs = args;
-  } else if (fs.existsSync(VENV_PY) && ensureExecutable(VENV_PY)) {
-    launchCmd = VENV_PY;
-    launchArgs = ["-m", DUMP_MODULE, ...args];
-  } else if (await cmdExists("mitmdump")) {
-    launchCmd = "mitmdump";
-    launchArgs = args;
-  } else if (await cmdExists("python3")) {
-    launchCmd = "python3";
-    launchArgs = ["-m", DUMP_MODULE, ...args];
-  } else {
-    throw new Error("未找到可用的 mitmdump 或 python3。");
-  }
-
+  // （超关键）环境变量：把 venv/bin 放在 PATH 最前；把内置 Frameworks 放到动态库搜索路径；
+  // 这样可在目标机上避免依赖宿主 Homebrew Python 的 dyld 装载失败或被系统杀掉（SIGKILL）。
+  const frameworksDir = path.join(process.resourcesPath, "..", "Frameworks");
   const opts = {
     cwd: process.resourcesPath,
     env: {
       ...process.env,
       PATH: `${VENV_BIN}:${process.env.PATH || ""}`,
+      // 供 Python.framework 查找（主用）
+      DYLD_FRAMEWORK_PATH: frameworksDir,
+      // 一些三方扩展/openssl 等在 .dylib 下，需要这个（辅用）
+      DYLD_LIBRARY_PATH: frameworksDir,
+      // 避免读到用户站点包
       PYTHONNOUSERSITE: "1",
     },
     shell: false,
-
-    // ✅ 关键：让子进程脱离当前会话，避免 SIGHUP/tty 关闭导致退出
-    detached: true,
-    // ✅ 关键：不给 stdin（一些程序在 stdin 关闭/EOF 时会退出）
+    detached: false,
     stdio: ["ignore", "pipe", "pipe"],
   };
 
-  const echo = `$ ${q(launchCmd)} ${launchArgs.map(q).join(" ")}`;
-  sendLog(echo);
+  // 逐一尝试的启动方案（任何一个成功并“存活”就算 OK）
+  const plans = [];
 
-  const startTs = Date.now();
-  mitmProc = spawn(launchCmd, launchArgs, opts);
-  try { mitmProc.unref(); } catch {}
+  if (dumpOk) {
+    plans.push({
+      cmd: VENV_MITMDUMP,
+      args: [...argsBase],
+      label: "venv/mitmdump",
+    });
+  }
+  if (pyOk) {
+    plans.push({
+      cmd: VENV_PY,
+      args: ["-m", "mitmproxy.tools.dump", ...argsBase],
+      label: "venv/python -m",
+    });
+  }
+  const sysDump = await cmdExists("mitmdump");
+  if (sysDump) {
+    plans.push({ cmd: "mitmdump", args: [...argsBase], label: "system/mitmdump" });
+  }
+  const sysPy = await cmdExists("python3");
+  if (sysPy) {
+    plans.push({ cmd: "python3", args: ["-m", "mitmproxy.tools.dump", ...argsBase], label: "system/python -m" });
+  }
+  if (!plans.length) throw new Error("没有可用的 mitmdump 或 python3 启动方式。");
 
-  mitmProc.stdout.on("data", (d) => sendLog(d.toString()));
-  mitmProc.stderr.on("data", (d) => sendLog(d.toString()));
-  mitmProc.on("error", (err) => sendLog(`[启动错误] ${String(err)}`));
-  mitmProc.on("exit", (code, signal) => {
-    const aliveMs = Date.now() - startTs;
-    sendLog(`\n[mitm 退出] code=${code} signal=${signal} (存活 ${aliveMs}ms)`);
-    if (code === 0 && aliveMs < 1500) {
-      sendLog(`[诊断] 进程过快退出。常见原因：
-- 子进程收到 SIGHUP（会话关闭/TTY 变化）；
-- stdin 被关闭导致退出；
-- 外部管控/安全软件结束了进程。
-已启用 detached + 无 stdin。若仍复现，请在终端手动执行上面一整行命令确认环境。`);
+  async function tryPlan(plan, idx) {
+    const echo = `$ ${q(plan.cmd)} ${plan.args.map(q).join(" ")}\n`;
+    mainWindow?.webContents.send("mitm-log", echo);
+
+    return new Promise((resolve, reject) => {
+      let exited = false;
+      const p = spawn(plan.cmd, plan.args, opts);
+      mitmProc = p;
+
+      // 只要能跑过 “存活窗口” 就当成功（避免“瞬退”误判）
+      const aliveTimer = setTimeout(() => {
+        if (!exited) {
+          mainWindow?.webContents.send("mitm-log", "[Start] 代理已启动。\n");
+          resolve(true);
+        }
+      }, 600);
+
+      p.stdout.on("data", (d) => mainWindow?.webContents.send("mitm-log", d.toString()));
+      p.stderr.on("data", (d) => mainWindow?.webContents.send("mitm-log", d.toString()));
+      p.on("error", (err) => {
+        clearTimeout(aliveTimer);
+        mainWindow?.webContents.send("mitm-log", `[启动错误] ${String(err)}\n`);
+      });
+      p.on("exit", (code, signal) => {
+        exited = true;
+        clearTimeout(aliveTimer);
+        mainWindow?.webContents.send("mitm-log", `\n[mitm 退出] code=${code} signal=${signal} (存活 ${p.spawnfile ? "" : ""})\n`);
+        mitmProc = null;
+        // 退出过快则尝试下一种方案
+        if (idx < plans.length - 1) {
+          mainWindow?.webContents.send("mitm-log", `[诊断] 进程过快退出，尝试使用下一个可用启动方式……\n`);
+          resolve(false);
+        } else {
+          reject(new Error("所有启动方式均失败，请在终端手动运行上面命令以获得更多诊断信息。"));
+        }
+      });
+    });
+  }
+
+  for (let i = 0; i < plans.length; i++) {
+    // 小提示：优先使用 venv/mitmdump，其次 venv/python -m，这样可最大化利用你打包进来的依赖
+    if (i === 0 && plans[0].label !== "venv/mitmdump") {
+      // 如果不是 mitmdump，尝试把 mitmdump 提到首位
+      const hit = plans.findIndex((p) => p.label === "venv/mitmdump");
+      if (hit > 0) {
+        const t = plans.splice(hit, 1)[0];
+        plans.unshift(t);
+      }
     }
-    mitmProc = null;
-  });
+  }
 
-  sendLog("[Start] 代理已启动。");
-  return true;
+  // 依次试所有 plan（任一成功即返回）
+  for (let i = 0; i < plans.length; i++) {
+    const ok = await tryPlan(plans[i], i).catch((e) => {
+      mainWindow?.webContents.send("mitm-log", `[诊断] 方案 ${plans[i].label} 失败：${String(e)}\n`);
+      return false;
+    });
+    if (ok) return true;
+  }
+
+  throw new Error("mitm 启动失败。");
 });
 
-// ---- 停止 MITM（优雅 -> 强杀兜底）----
+// ------------------------- 停止 MITM（优雅 -> KILL） -------------------------
 function killMitmGracefully() {
   if (!mitmProc) return false;
   try { mitmProc.kill("SIGINT"); } catch {}
   if (stopTimer) clearTimeout(stopTimer);
   stopTimer = setTimeout(() => {
-    if (mitmProc && !mitmProc.killed) { try { mitmProc.kill("SIGKILL"); } catch {} }
+    if (mitmProc && !mitmProc.killed) {
+      try { mitmProc.kill("SIGKILL"); } catch {}
+    }
   }, 3000);
   return true;
 }
 ipcMain.handle("stop-mitm", async () => {
-  const ok = killMitmGracefully();
-  if (ok) sendLog("[Stop] 代理已停止。");
-  return ok;
+  return killMitmGracefully();
 });
 
-// ========= 一次性提权执行多条命令（系统代理设置） =========
+// ------------------------- 系统代理（保持你现有逻辑） -------------------------
 function escAppleScript(s) {
   return String(s).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
@@ -330,8 +392,6 @@ async function runAsAdminBatch(shellCmds /* string[] */) {
   const osa = `do shell script "${escAppleScript(joined)}" with administrator privileges`;
   await execFileP("osascript", ["-e", osa]);
 }
-
-// ========= networksetup & 备份 =========
 const proxyBackupFile = path.join(app.getPath("userData"), "proxy-backup.json");
 function isMac() { return process.platform === "darwin"; }
 async function listNetworkServices() {
@@ -377,7 +437,6 @@ function buildRestoreCommandsForService(service, snap) {
   const sPort = (snap.sec?.match(/Port:\s+(\d+)/i) || [,""])[1].trim();
   const autoOn = /Yes/i.test(snap.autostate || "");
   const autoURL = (snap.auto?.match(/URL:\s+(.+)/i) || [,""])[1]?.trim();
-
   if (webOn && wHost && wPort) {
     cmds.push(`networksetup -setwebproxy ${svc} ${wHost} ${wPort}`);
     cmds.push(`networksetup -setwebproxystate ${svc} on`);
@@ -398,36 +457,30 @@ function buildRestoreCommandsForService(service, snap) {
   }
   return cmds;
 }
-
-// ---- IPC：一键设置 / 恢复系统代理（只弹一次密码框）----
 ipcMain.handle("set-system-proxy", async (_evt, { host, port }) => {
   if (!isMac()) throw new Error("当前仅支持 macOS 系统代理设置。");
   if (!host || !port) throw new Error("缺少代理地址或端口。");
-
   await backupCurrentProxy();
-
   const services = await listNetworkServices();
   const cmds = [];
   for (const s of services) {
     if (s.startsWith("*")) continue;
     cmds.push(...buildSetCommandsForService(s, host, port));
   }
-  await runAsAdminBatch(cmds); // 只弹一次授权
+  await runAsAdminBatch(cmds);
   return true;
 });
 ipcMain.handle("restore-system-proxy", async () => {
   if (!isMac()) throw new Error("当前仅支持 macOS 系统代理设置。");
   if (!fs.existsSync(proxyBackupFile)) throw new Error("没有找到备份，无法恢复。");
-
   const snap = JSON.parse(fs.readFileSync(proxyBackupFile, "utf8"));
   const data = snap.data || {};
   const services = await listNetworkServices();
-
   const cmds = [];
   for (const s of services) {
     if (data[s]) cmds.push(...buildRestoreCommandsForService(s, data[s]));
   }
   if (cmds.length === 0) return true;
-  await runAsAdminBatch(cmds); // 只弹一次授权
+  await runAsAdminBatch(cmds);
   return true;
 });

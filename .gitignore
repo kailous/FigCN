@@ -23,6 +23,7 @@ __MACOSX/
 
 # Python venv
 venv/
+venv_pack/
 ENV/
 env/
 .venv/
