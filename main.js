@@ -58,6 +58,7 @@ function createWindow() {
   mainWindow.on("show", () => mainWindow?.focus());
 }
 
+// 创建托盘图标
 function createTray() {
   try {
     // 1) 先找模板图（建议：18x18 & 36x36 黑色 + 透明背景）
@@ -92,8 +93,6 @@ function createTray() {
       { type: "separator" },
       { label: "启动代理", click: () => mainWindow?.webContents.send("ui:menu:start") },
       { label: "停止代理", click: () => mainWindow?.webContents.send("ui:menu:stop") },
-      { type: "separator" },
-      { label: "安装并信任证书", click: () => mainWindow?.webContents.send("ui:menu:install-ca") },
       { type: "separator" },
       { label: "退出", click: () => { isQuiting = true; app.quit(); } },
     ]);

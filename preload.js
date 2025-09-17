@@ -29,3 +29,9 @@ contextBridge.exposeInMainWorld("mitm", {
   restoreSystemProxy: () => ipcRenderer.invoke("restore-system-proxy"),
 });
 
+// ---- 新增：桥接托盘菜单 -> 渲染器 ----
+contextBridge.exposeInMainWorld("menu", {
+  onStart: (cb) => ipcRenderer.on("ui:menu:start", () => cb?.()),
+  onStop: (cb) => ipcRenderer.on("ui:menu:stop", () => cb?.()),
+  onInstallCA: (cb) => ipcRenderer.on("ui:menu:install-ca", () => cb?.()),
+});
