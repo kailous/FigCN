@@ -88,7 +88,7 @@ $("#upstreamToggle")?.addEventListener("change", async () => {
         if ($("#upstreamInput")) $("#upstreamInput").disabled = true;
         if ($("#btnDetect")) $("#btnDetect").disabled = true;
 
-        appendLog("[上游] 当前系统代理已指向本机监听端口，避免自指环路。请先关闭系统代理或点击“停止”自动恢复。");
+        appendLog("[上游代理] 当前系统代理已指向本机监听端口，避免自指环路。请先关闭系统代理或点击“停止”自动恢复，再勾选上游代理。");
         alert("当前系统代理已指向本机监听端口，避免自指环路。\n请先关闭系统代理或点击“停止”自动恢复，再勾选上游代理。");
         return;
       }
