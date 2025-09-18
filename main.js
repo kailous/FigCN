@@ -184,6 +184,9 @@ ipcMain.handle("get-system-proxy", async () => sysProxy.getSystemProxy());
 
 // 供托盘菜单触发（如需）
 ipcMain.on("ui:tray:show", () => { mainWindow?.show(); mainWindow?.focus(); });
-
+// 版本号 IPC
+ipcMain.handle("get-version", async () => {
+  return app.getVersion(); // 来自 Info.plist 的 CFBundleShortVersionString
+});
 // 导出（如需在其他模块 require main）
 module.exports = { resPath };

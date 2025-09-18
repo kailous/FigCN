@@ -44,6 +44,42 @@ body {
   overflow: hidden;
   /* 左列内部如需滚动可自行设定 */
 }
+svg.iconpark-icon {
+  color:var(--text-color);
+  aspect-ratio: 224 / 98;
+  height: 98px;
+  margin-bottom: 20px;
+}
+.title {
+  align-items: start !important;
+  justify-content: space-between;
+  width: 100%;
+  color: var(--hint-color);
+}
+div.info {
+  display: flex;
+  /* 竖排 */
+  flex-direction: column;
+  /* 右对齐 */
+  align-items: flex-end;
+}
+div.info a {
+  /* 无下划线 */
+  text-decoration: none;
+  color: var(--text-color);
+}
+#version::before {
+  content: "v";
+  margin-right: 5px;
+}
+hr {
+  border: none;
+  border-top: 1px solid var(--border-color);
+  /* 不透明度 */
+  opacity: 0.15;
+  margin: 12px 0;
+  width: 100%;
+}
 
 .card {
   display: flex;

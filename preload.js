@@ -12,6 +12,8 @@ contextBridge.exposeInMainWorld("mitm", {
 
   start: (cfg) => ipcRenderer.invoke("start-mitm", cfg),
   stop: () => ipcRenderer.invoke("stop-mitm"),
+  // 获取版本号
+  getVersion: () => ipcRenderer.invoke("get-version"),
 
   // 自动探测上游代理（默认针对 Figma 求解）
   autoDetectUpstream: (testUrl) =>

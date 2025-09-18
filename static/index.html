@@ -6,20 +6,28 @@
   <title>FigCN 控制面板</title>
   <link rel="stylesheet" href="css/style.css" />
   <script src="js/icons.js"></script>
+  <script src="js/title.js"></script>
 </head>
 
 <body>
   <div id="left">
-    <h1>FigCN 控制面板</h1>
+    <div class="card">
+      <div class="row title">
+        <svg class="iconpark-icon"><use href="#title"></use></svg>
+        <div class="info">
+        <span id="version"></span>
+        <span>by <a href="https://github.com/kailous">kailous</a></span>
+        </div>
+      </div>
+    </div>
     <!-- 上游代理 -->
     <div class="card">
       <div class="row">
-      <label class="row">
-        <input id="upstreamToggle" type="checkbox" />
-        <h3>上游代理</h3>
-      </label>
-      <input id="upstreamInput" type="text" placeholder="http://127.0.0.1:7890"
-          disabled />
+        <label class="row">
+          <input id="upstreamToggle" type="checkbox" />
+          <h3>上游代理</h3>
+        </label>
+        <input id="upstreamInput" type="text" placeholder="http://127.0.0.1:7890" disabled />
         <button id="btnDetect" disabled title="侦测上游"><iconpark-icon name="aiming"></iconpark-icon>侦测上游</button>
       </div>
       <div class="row">
@@ -27,6 +35,7 @@
           <code>socks4://</code>。点“侦测上游”会自动检测系统/PAC/常见端口，并把结果写入输入框（若检测到）。</span>
       </div>
     </div>
+    <hr>
     <!-- 监听地址 -->
     <div class="card">
       <div class="row">
@@ -35,24 +44,21 @@
       </div>
       <div class="row">
         <h3>端口</h3>
-        <input id="port" type="number" placeholder="8080"/>
+        <input id="port" type="number" placeholder="8080" />
       </div>
       <div class="row">
         <button id="btnStart" class="special row"><iconpark-icon name="power"></iconpark-icon>启动代理</button>
         <button id="btnStop" class="row"><iconpark-icon name="close-one"></iconpark-icon>停止代理</button>
       </div>
     </div>
+    <hr>
     <!-- 系统代理 -->
     <div class="card">
       <div class="row">
-        <h3>系统代理</h3>
+        <button id="btnInstallCA" class="row">一键安装并信任证书</button>
         <button id="btnSetSysProxy" class="row">设为本地代理</button>
         <button id="btnRestoreSysProxy" class="row">恢复系统代理</button>
       </div>
-      <span class="hint">将系统 HTTP/HTTPS 代理设置为监听地址与端口（如 127.0.0.1:8080）。需要管理员授权。</span>
-    </div>
-    <div class="card">
-      <button id="btnInstallCA">一键安装并信任证书</button>
       <span class="hint">
         证书只需安装一次，如果安装失败请手动安装证书。<br>
         手动安装证书请参考 <a href="https://docs.mitmproxy.org/stable/concepts/certificates/" target="_blank">mitmproxy 官方文档</a>。
@@ -63,8 +69,6 @@
     <textarea id="log" readonly placeholder="代理日志输出..."></textarea>
   </div>
   <script src="js/renderer.js"></script>
-    <!-- <script src="js/style.js"></script> -->
-
 </body>
 
 </html>

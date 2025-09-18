@@ -22,10 +22,12 @@
         --bg-color: var(--white-color);
         --text-color: var(--black-color);
         --button-bg-color: var(--light-grey-color);
+        --special-button-bg-color: var(--highlight-color);
         --textarea-bg-color: var(--light-grey-color);
         --input-bg-color: var(--light-grey-color);
         --hover-color: var(--overlay-color);
         --hint-color: #6b7280;
+        --border-color: var(--dark-grey-color);
         --hint-link-color: var(--highlight-color);
         --focus-color: var(--highlight-color);
     }
@@ -42,6 +44,7 @@
         --input-bg-color: var(--dark-grey-color);
         --hover-color: var(--overlay-color);
         --hint-color: #6b7280;
+        --border-color: var(--light-grey-color);
         --hint-link-color: var(--highlight-color);
         --focus-color: var(--highlight-color);
     }

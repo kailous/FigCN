@@ -214,3 +214,16 @@ $("#btnRestoreSysProxy")?.addEventListener("click", async () => {
     appendLog("[系统代理] 恢复失败：" + String(e));
   }
 });
+
+// 获取版本号，写入到页面
+(async () => {
+  try {
+    const v = await window.mitm.getVersion();
+    if (v) {
+      const el = document.querySelector("#version");
+      if (el) el.textContent = `${v}`;
+    }
+  } catch (e) {
+    console.error("获取版本号失败", e);
+  }
+})();
