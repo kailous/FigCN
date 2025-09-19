@@ -7,11 +7,11 @@
   "author": "kailous",
   "scripts": {
     "start": "OS_ACTIVITY_MODE=disable ELECTRON_ENABLE_LOGGING=false electron .",
-    "dist": "electron-builder -m",
+    "dist": "node scripts/runDist.js",
     "dist:mac:arm64": "electron-builder --mac dmg zip --arm64",
     "dist:mac:intel": "electron-builder --mac dmg zip --x64",
     "dist:mac:all": "npm run dist:mac:arm64 && npm run dist:mac:intel",
-    "dist:win": "electron-builder --win nsis zip"
+    "dist:win": "electron-builder --win nsis zip --x64 --arm64"
   },
   "build": {
     "appId": "com.rainforest.figcn.beta",
@@ -33,9 +33,7 @@
     ],
 
     "extraResources": [
-      { "from": "vendor/mitmproxy.app", "to": "mitmproxy.app" },
-      { "from": "vendor/mitmproxy-win64", "to": "mitmproxy-win64" },
-      { "from": "figcn_injector.py",    "to": "figcn_injector.py" }
+      { "from": "figcn_injector.py", "to": "figcn_injector.py" }
     ],
 
     "mac": {
@@ -52,16 +50,22 @@
       "extendInfo": {
         "LSUIElement": true
       },
-      "artifactName": "${productName}-${version}-mac-${arch}.${ext}"
+      "artifactName": "${productName}-${version}-mac-${arch}.${ext}",
+      "extraResources": [
+        { "from": "vendor/mitmproxy.app", "to": "mitmproxy.app" }
+      ]
     },
 
     "win": {
       "icon": "icon/icon.ico",
       "target": [
-        { "target": "nsis", "arch": ["x64"] },
-        { "target": "zip", "arch": ["x64"] }
+        { "target": "nsis", "arch": ["x64", "arm64"] },
+        { "target": "zip", "arch": ["x64", "arm64"] }
       ],
-      "artifactName": "${productName}-${version}-win-${arch}.${ext}"
+      "artifactName": "${productName}-${version}-win-${arch}.${ext}",
+      "extraResources": [
+        { "from": "vendor/mitmproxy-win64", "to": "mitmproxy-win64" }
+      ]
     },
 
     "nsis": {
