@@ -7,6 +7,14 @@
   box-sizing: border-box;
 }
 
+body {
+  padding-top: 40px !important;
+  /* 可以拖动 */
+  -webkit-app-region: drag;
+}
+button, input, select, textarea, a, [role="button"] {
+  -webkit-app-region: no-drag;  /* ✅ 防止误拖 */
+}
 /* #right { max-height: 70vh; } */
 html,
 body {

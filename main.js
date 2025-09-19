@@ -37,6 +37,9 @@ function createWindow() {
     icon: getAsset("icon", "icon.icns") || undefined,
     width: 960,
     height: 700,
+    frame: false,             // ✅ 去掉标题栏和窗口边框
+    titleBarStyle: "hidden",  // ✅ macOS 上隐藏标题栏
+    trafficLightPosition: { x: 12, y: 12 }, // 可选：重定位红黄绿按钮
     show: false, // 菜单栏常驻：由托盘控制显示
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
