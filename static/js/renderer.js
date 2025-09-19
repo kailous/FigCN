@@ -56,17 +56,22 @@ $("#upstreamToggle")?.addEventListener("change", async () => {
 
   if (!window.mitm?.loadConfig || !window.mitm?.saveConfig) return;
 
-  if (on && window.mitm?.getSystemProxy) {
+    if (on && (window.mitm?.isSystemProxyPointingTo || window.mitm?.getSystemProxy)) {
     try {
-      const sys = await window.mitm.getSystemProxy(); // {services:[{web:{enabled,host,port}, secure:{...}}]}
+  
       const host = ($("#listenHost")?.value || "127.0.0.1").trim();
       const port = Number($("#port")?.value || 8080);
-      const isSelf = (sys?.services || []).some(svc => {
-        const w = svc.web || {};
-        const s = svc.secure || {};
-        return (w.enabled && w.host === host && Number(w.port) === port) ||
-               (s.enabled && s.host === host && Number(s.port) === port);
-      });
+      let isSelf = false;
+      if (window.mitm?.isSystemProxyPointingTo) {
+        isSelf = await window.mitm.isSystemProxyPointingTo(host, port);
+      } else {
+        const sys = await window.mitm.getSystemProxy();
+        const http = sys?.http || {};
+        const https = sys?.https || {};
+        isSelf =
+          (http.enabled && http.host === host && Number(http.port) === port) ||
+          (https.enabled && https.host === host && Number(https.port) === port);
+      }
       if (isSelf) {
         $("#upstreamToggle").checked = false;
         if ($("#upstreamInput")) $("#upstreamInput").disabled = true;

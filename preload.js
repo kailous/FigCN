@@ -6,6 +6,8 @@ contextBridge.exposeInMainWorld("mitm", {
   saveConfig: (cfg) => ipcRenderer.invoke("save-config", cfg),
   // === 新增：查询系统代理（只读）
   getSystemProxy: () => ipcRenderer.invoke("get-system-proxy"),
+  isSystemProxyPointingTo: (host, port) =>
+    ipcRenderer.invoke("is-system-proxy-pointing-to", { host, port }),
   installCA: () => ipcRenderer.invoke('install-mitm-ca'),
   openKeychainAccess: () => ipcRenderer.invoke('open-keychain-access'),
   checkCA: () => ipcRenderer.invoke('check-mitm-ca'),

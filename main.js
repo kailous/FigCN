@@ -184,7 +184,9 @@ ipcMain.handle("restore-system-proxy", async () =>
   sysProxy.restoreSystemProxy()
 );
 ipcMain.handle("get-system-proxy", async () => sysProxy.getSystemProxy());
-
+ipcMain.handle("is-system-proxy-pointing-to", async (_e, { host, port }) =>
+  sysProxy.isSystemProxyPointingTo(host, port)
+);
 // 供托盘菜单触发（如需）
 ipcMain.on("ui:tray:show", () => { mainWindow?.show(); mainWindow?.focus(); });
 // 版本号 IPC
