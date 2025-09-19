@@ -7,7 +7,11 @@
   "author": "kailous",
   "scripts": {
     "start": "OS_ACTIVITY_MODE=disable ELECTRON_ENABLE_LOGGING=false electron .",
-    "dist": "electron-builder -m"
+    "dist": "electron-builder -m",
+    "dist:mac:arm64": "electron-builder --mac dmg zip --arm64",
+    "dist:mac:intel": "electron-builder --mac dmg zip --x64",
+    "dist:mac:all": "npm run dist:mac:arm64 && npm run dist:mac:intel",
+    "dist:win": "electron-builder --win nsis zip"
   },
   "build": {
     "appId": "com.rainforest.figcn.beta",
@@ -30,12 +34,16 @@
 
     "extraResources": [
       { "from": "vendor/mitmproxy.app", "to": "mitmproxy.app" },
+      { "from": "vendor/mitmproxy-win64", "to": "mitmproxy-win64" },
       { "from": "figcn_injector.py",    "to": "figcn_injector.py" }
     ],
 
     "mac": {
       "icon": "icon/icon.icns",
-      "target": ["dmg", "zip"],
+      "target": [
+        { "target": "dmg", "arch": ["arm64", "x64"] },
+        { "target": "zip", "arch": ["arm64", "x64"] }
+      ],
       "category": "public.app-category.developer-tools",
       "hardenedRuntime": true,
       "entitlements": "entitlements.mac.plist",
@@ -43,7 +51,24 @@
       "gatekeeperAssess": false,
       "extendInfo": {
         "LSUIElement": true
-      }
+      },
+      "artifactName": "${productName}-${version}-mac-${arch}.${ext}"
+    },
+
+    "win": {
+      "icon": "icon/icon.ico",
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "zip", "arch": ["x64"] }
+      ],
+      "artifactName": "${productName}-${version}-win-${arch}.${ext}"
+    },
+
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
     },
 
     "afterPack": "scripts/afterPack.js",

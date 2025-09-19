@@ -7,6 +7,8 @@ const { execFile } = require("child_process");
 const { promisify } = require("util");
 const execFileP = promisify(execFile);
 
+const WINDOWS_PROXY_KEY = "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings";
+
 function fetchText(url) {
   return new Promise((resolve, reject) => {
     const h = url.startsWith("https:") ? https : http;
@@ -51,11 +53,13 @@ function probeHttpProxy(host, port, timeoutMs = 1200) {
 }
 
 async function getSystemProxyCandidate(testUrl) {
-  if (os.platform() === "darwin") {
+  const platform = os.platform();
+
+  if (platform === "darwin") {
     try {
       const { stdout } = await execFileP("scutil", ["--proxy"]);
       const kv = {};
-      stdout.split("\n").forEach(line => {
+      stdout.split("\n").forEach((line) => {
         const m = line.match(/^\s*(\S+)\s*:\s*(.+)\s*$/);
         if (m) kv[m[1]] = m[2];
       });
@@ -63,11 +67,67 @@ async function getSystemProxyCandidate(testUrl) {
         const pac = await resolveFromPAC(kv.ProxyAutoConfigURLString.trim(), testUrl);
         if (pac) return pac;
       }
-      if (kv.HTTPSEnable === "1" && kv.HTTPSProxy && kv.HTTPSPort) return `http://${kv.HTTPSProxy}:${kv.HTTPSPort}`;
-      if (kv.HTTPEnable === "1" && kv.HTTPProxy && kv.HTTPPort)   return `http://${kv.HTTPProxy}:${kv.HTTPPort}`;
+      if (kv.HTTPSEnable === "1" && kv.HTTPSProxy && kv.HTTPSPort) {
+        return `http://${kv.HTTPSProxy}:${kv.HTTPSPort}`;
+      }
+      if (kv.HTTPEnable === "1" && kv.HTTPProxy && kv.HTTPPort) {
+        return `http://${kv.HTTPProxy}:${kv.HTTPPort}`;
+      }
     } catch { /* ignore */ }
   }
+
+  if (platform === "win32") {
+    try {
+      const { stdout } = await execFileP("reg", ["query", WINDOWS_PROXY_KEY]);
+      let proxyEnable = false;
+      let proxyServer = "";
+      let autoConfig = "";
+      stdout.split(/\r?\n/).forEach((line) => {
+        const m = line.match(/^(?:\s*)(ProxyEnable|ProxyServer|AutoConfigURL)\s+REG_\S+\s+(.+)$/i);
+        if (m) {
+          const key = m[1].toLowerCase();
+          const val = m[2].trim();
+          if (key === "proxyenable") proxyEnable = /^0x1$/i.test(val) || val === "1";
+          if (key === "proxyserver") proxyServer = val;
+          if (key === "autoconfigurl") autoConfig = val;
+        }
+      });
+      if (autoConfig) {
+        const pac = await resolveFromPAC(autoConfig.trim(), testUrl);
+        if (pac) return pac;
+      }
+      if (proxyEnable && proxyServer) {
+        const candidate = normalizeWindowsProxyServer(proxyServer);
+        if (candidate) return candidate;
+      }
+    } catch { /* ignore */ }
+  }
+
   return null;
+}
+
+function normalizeWindowsProxyServer(raw) {
+  if (!raw) return null;
+  const parts = String(raw)
+    .split(";")
+    .map((seg) => seg.trim())
+    .filter(Boolean);
+  const map = {};
+  let fallback = null;
+  for (const seg of parts) {
+    const eq = seg.indexOf("=");
+    if (eq >= 0) {
+      const key = seg.slice(0, eq).trim().toLowerCase();
+      const val = seg.slice(eq + 1).trim();
+      if (val) map[key] = val;
+    } else if (!fallback) {
+      fallback = seg;
+    }
+  }
+  const pick = map.https || map.http || fallback || Object.values(map)[0];
+  if (!pick) return null;
+  if (/^(https?|socks5?|socks4?):\/\//i.test(pick)) return pick;
+  return `http://${pick}`;
 }
 
 async function probeLocalCandidates() {

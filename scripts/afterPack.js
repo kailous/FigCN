@@ -27,20 +27,42 @@ function chmodExecutablesIn(dir) {
 }
 
 exports.default = async function afterPack(context) {
-  const resourcesDir = context.appOutDir
-    ? path.join(context.appOutDir, `${context.packager.appInfo.productFilename}.app`, "Contents", "Resources")
-    : path.join(context.electronPlatformName === "darwin" ? "dist/mac-arm64" : "dist", "Contents", "Resources");
+  const platform = context.electronPlatformName;
+  let resourcesDir;
+
+  if (context.appOutDir) {
+    if (platform === "darwin") {
+      resourcesDir = path.join(
+        context.appOutDir,
+        `${context.packager.appInfo.productFilename}.app`,
+        "Contents",
+        "Resources"
+      );
+    } else {
+      resourcesDir = path.join(context.appOutDir, "resources");
+    }
+  } else {
+    if (platform === "darwin") {
+      resourcesDir = path.join(
+        "dist",
+        "mac-arm64",
+        `${context.packager?.appInfo?.productFilename || "FigCN"}.app`,
+        "Contents",
+        "Resources"
+      );
+    } else {
+      resourcesDir = path.join("dist", "resources");
+    }
+  }
 
   console.log("[afterPack] resources:", resourcesDir);
 
-  // 内置 mitmproxy.app 路径
-  const mitmApp = path.join(resourcesDir, "mitmproxy.app");
-  const mitmMacOSDir = path.join(mitmApp, "Contents", "MacOS");
+  if (platform === "darwin") {
+    const mitmApp = path.join(resourcesDir, "mitmproxy.app");
+    const mitmMacOSDir = path.join(mitmApp, "Contents", "MacOS");
+    chmodExecutablesIn(mitmMacOSDir);
+  }
 
-  // 关键：给 mitmproxy.app 的二进制加可执行
-  chmodExecutablesIn(mitmMacOSDir);
-
-  // 你的注入脚本也确保可读（可不加；这里保持一行记录）
   const injector = path.join(resourcesDir, "figcn_injector.py");
   try {
     if (fs.existsSync(injector)) {

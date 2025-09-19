@@ -172,7 +172,14 @@ async function doInstallCA() {
   try {
     appendLog("[证书] 正在生成并安装根证书（需要一次系统授权）...");
     const res = await window.mitm.installCA();
-    appendLog(`[证书] 安装完成：${res.caFile}`);
+    if (res?.ok) {
+      const msg = res.message || "证书已安装。";
+      appendLog(`[证书] ${msg}` + (res.certPath ? `\n证书文件：${res.certPath}` : ""));
+    } else {
+      const msg = res?.message || "自动安装失败，请根据提示手动信任证书。";
+      appendLog(`[证书] 安装失败：${msg}`);
+      alert(`自动安装证书失败：\n${msg}`);
+    }
   } catch (e) {
     appendLog("[证书] 安装失败：" + String(e));
   }
