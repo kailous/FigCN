@@ -237,7 +237,7 @@ textarea {
 }
 
 .hint a {
-  color: var(--hint-link-color);
+  color: var(--text-color);
 }
 
 /* ===== 滚动条（可选）===== */

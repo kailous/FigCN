@@ -1,5 +1,5 @@
 // main.js
-const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage } = require("electron");
+const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, shell } = require("electron");
 const fs = require("fs");
 const path = require("path");
 
@@ -192,6 +192,20 @@ ipcMain.on("ui:tray:show", () => { mainWindow?.show(); mainWindow?.focus(); });
 // 版本号 IPC
 ipcMain.handle("get-version", async () => {
   return app.getVersion(); // 来自 Info.plist 的 CFBundleShortVersionString
+});
+
+// === 新增：打开外链（系统默认浏览器）
+// 新增：统一从主进程打开系统浏览器
+ipcMain.handle("open-external", async (_e, url) => {
+  if (typeof url !== "string") return false;
+  if (!/^https?:\/\//i.test(url)) return false;
+  try {
+    await shell.openExternal(url);
+    return true;
+  } catch (err) {
+    console.error("openExternal failed:", err);
+    return false;
+  }
 });
 // 导出（如需在其他模块 require main）
 module.exports = { resPath };

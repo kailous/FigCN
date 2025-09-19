@@ -1,5 +1,5 @@
 // preload.js
-const { contextBridge, ipcRenderer } = require("electron");
+const { contextBridge, ipcRenderer, shell } = require("electron");
 
 contextBridge.exposeInMainWorld("mitm", {
   loadConfig: () => ipcRenderer.invoke("load-config"),
@@ -38,4 +38,29 @@ contextBridge.exposeInMainWorld("menu", {
   onStart: (cb) => ipcRenderer.on("ui:menu:start", () => cb?.()),
   onStop: (cb) => ipcRenderer.on("ui:menu:stop", () => cb?.()),
   onInstallCA: (cb) => ipcRenderer.on("ui:menu:install-ca", () => cb?.()),
+});
+
+// 追加在现有 exposeInMainWorld 下面即可：
+
+// 放在 DOMContentLoaded 监听里或其后：拦截页面里所有 http/https 外链
+// preload.js —— 仅替换链接拦截这段
+window.addEventListener("DOMContentLoaded", () => {
+  document.body.addEventListener(
+    "click",
+    (e) => {
+      const a = e.target?.closest?.("a[href]");
+      if (!a) return;
+
+      const href = a.getAttribute("href") || "";
+      // 只拦截 http/https 外链；应用内链接不拦截
+      if (/^https?:\/\//i.test(href)) {
+        e.preventDefault();
+        // 通过 IPC 让主进程打开系统默认浏览器
+        ipcRenderer.invoke("open-external", href).catch((err) => {
+          console.error("shell.openExternal call error:", err);
+        });
+      }
+    },
+    { passive: false }
+  );
 });
