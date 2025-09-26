@@ -8,23 +8,24 @@
 - 应用提供托盘常驻的可视化控制面板，可一键启动/停止代理、自动配置系统代理、安装根证书并查看运行日志。
 - 同时支持 macOS（Apple Silicon 与 Intel）与 Windows（x64/arm64）平台；Windows 构建需额外引入官方 mitmproxy 可执行文件。
 
-## 2. 环境要求与准备
+## 2. 系统要求
 
 | 项目 | 最低要求 |
 | --- | --- |
-| 操作系统 | macOS 12+，或 Windows 10 及以上（x64/arm64） |
-| Node.js | 推荐 18 LTS 或更新版本（用于开发/构建） |
-| npm | 随 Node.js 提供 |
-| mitmproxy | macOS 版本已内置；Windows 需手动下载 `mitmproxy-*-windows.zip` 并解压到 `vendor/mitmproxy-win64/` |
-| Electron 运行权限 | macOS 首次运行可能需要允许运行未签名应用，或使用 `xattr -dr com.apple.quarantine <App>.app` 清除隔离标记 |
+| 操作系统 | macOS 12+，win版本bug尚未修复，敬请期待 |
 
-## 3. 快速入门（终端安装包）
+## 3. 安装说明
 
-1. 从发布页或自行构建获取 FigCN 安装包。
-2. 安装并启动应用，系统托盘会出现 FigCN 图标，主窗口默认隐藏，可通过托盘菜单 → “打开窗口”呼出。
-3. 在控制面板中确认监听地址（默认 `127.0.0.1:8080`），点击“启动代理”。
-4. 若尚未信任 mitmproxy 证书，点击“生成并安装证书”。macOS 需按提示输入一次系统密码，Windows 可能出现 UAC 弹窗。
-5. FigCN 会自动备份并设置系统代理。打开 Figma 客户端或网页端，界面应切换为中文。若未生效，请尝试清除 Figma 缓存或执行界面底部的测试命令。
+### macOS 安装
+
+- 从发布页或自行构建获取 FigCN 安装包。
+- 将应用拖放到 `/Applications` 目录下。完成安装。
+- 启动应用，系统托盘会出现 FigCN 图标，主窗口默认隐藏，可通过托盘菜单 → “打开窗口”呼出。
+
+tips:
+
+- 首次启动时，若提示“无法打开应用”，请先在“系统偏好设置”→“安全与隐私”→“通用”中允许未经验证的应用。
+- 若提示应用已损坏，请先在终端执行 `xattr -dr com.apple.quarantine /Applications/FigCN(Beta).app` 清除隔离标记，然后重新启动应用。
 
 ## 4. 控制面板功能说明
 
@@ -51,7 +52,6 @@
 
 - FigCN 会检测 `~/.mitmproxy/mitmproxy-ca-cert.cer` 是否存在，不存在时提示先启动代理并访问 `https://mitm.it` 生成证书。
 - macOS：优先安装到 `login` 钥匙串，失败后自动请求管理员权限安装到 `System`。若仍失败，会弹出详细的手动操作步骤。
-- Windows：优先使用 `certutil -addstore root`，如需管理员权限会自动通过 PowerShell `Start-Process -Verb RunAs` 提示。
 - 帮助面板提供“打开钥匙串访问”辅助用户手动信任。
 
 ### 4.5 托盘与快捷操作
@@ -92,22 +92,12 @@
 ## 7. 常见问题 FAQ
 
 **Q1：启动后 Figma 仍是英文？**  
-确认系统代理已指向 FigCN 监听端口，证书已安装并信任，浏览器或客户端缓存已清除。可在日志中查看是否有 `汉化成功` 的测试输出。
+确认系统代理已指向 FigCN 监听端口，证书已安装并信任，浏览器或客户端缓存已清除。日志中是否有 `[Start] 代理已启动。`和`[系统代理] 设置完成。` 的测试输出。
 
-**Q2：macOS 提示“无法验证开发者”或 Gatekeeper 拦截？**  
-删减 `mitmproxy.app` 内容会破坏签名，可在完成瘦身后使用 `codesign --deep --force --sign - <App>.app` 自签，或用开发者证书重新签名。
+**Q2：如何清除缓存**  
+手动删除 `~/Library/Application Support/Figma/DesktopProfile/v37/Cache/Cache_Data`（macOS）
+清除缓存后，在客户端点击，`Figma` > `Check for Updates...` > `Reload All Tabs`，刷新所有界面。
 
-**Q3：证书安装失败怎么办？**  
-查看日志中的错误提示，根据提示手动打开钥匙串访问/证书管理器导入 `~/.mitmproxy/mitmproxy-ca-cert.cer`，并设为受信任根。
-
-**Q4：端口被占用或无法启动 mitmproxy？**  
-检查是否有其他服务占用配置端口，可修改端口并重新启动。若日志报 `bind: Address already in use`，说明端口冲突。
-
-**Q5：启用上游后网络断开？**  
-确保填写的上游地址协议正确且目标代理可用，可在终端执行 `curl -x <上游> https://www.google.com --head` 验证。
-
-**Q6：如何自定义翻译内容？**  
-在 `figcn_injector.py` 中修改拦截逻辑或替换缓存资源，修改后重启代理即可生效。建议保留原始文件备份。
 
 ## 8. 故障排查流程
 
@@ -119,7 +109,7 @@
 
 ## 9. 安全与隐私说明
 
-- FigCN 在本地运行，不向外部服务器发送任何敏感配置；所有用户配置默认保存在 `app.getPath("userData")` 目录。
+- FigCN 在本地运行，不向外部服务器发送任何敏感配置；所有用户配置默认保存在本地目录。
 - mitmproxy 仅对 Figma 域名进行劫持（代码中通过 `allow_hosts` 限制），不会拦截其他网站。
 - 使用 FigCN 会对 TLS 流量进行中间人解密，请勿在公共或不信任环境中共享证书或以管理员权限运行来路不明的脚本。
 
