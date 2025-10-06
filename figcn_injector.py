@@ -10,17 +10,17 @@ TARGET_PREFIX = "/webpack-artifacts/assets/"
 RULES = [
     {
         "host": "www.figma.com",
-        "pattern": re.compile(r"^/webpack-artifacts/assets/figma_app-[a-f0-9]{16}\.min\.en\.json(\.br)?$"),
+        "pattern": re.compile(r"^/webpack-artifacts/assets/figma_app(?:_beta|__rspack)?-[a-f0-9]+\.min\.en\.json(\.br)?$"),
         "replace_url": "https://kailous.github.io/figma-zh-CN-localized/lang/zh.json",
     },
     {
         "host": "www.figma.com",
-        "pattern": re.compile(r"^/webpack-artifacts/assets/auth_iframe-[a-f0-9]+\.min\.en\.json(\.br)?$"),
+        "pattern": re.compile(r"^/webpack-artifacts/assets/auth_iframe(?:__rspack)?-[a-f0-9]+\.min\.en\.json(\.br)?$"),
         "replace_url": "https://kailous.github.io/figma-zh-CN-localized/lang/auth_iframe-zh.json",
     },
     {
         "host": "www.figma.com",
-        "pattern": re.compile(r"^/webpack-artifacts/assets/community-[a-f0-9]+\.min\.en\.json(\.br)?$"),
+        "pattern": re.compile(r"^/webpack-artifacts/assets/community(?:__rspack)?-[a-f0-9]+\.min\.en\.json(\.br)?$"),
         "replace_url": "https://kailous.github.io/figma-zh-CN-localized/lang/community-zh.json",
     },
 ]
