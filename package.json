@@ -1,7 +1,7 @@
 {
   "name": "FigCN",
   "version": "1.5.3",
-  "description": "Figma 汉化代理助手（Electron + mitmproxy）",
+  "description": "Figma 汉化助手（Electron + mitmproxy）",
   "main": "main.js",
   "productName": "FigCN",
   "author": "kailous",
