@@ -8,10 +8,10 @@
   "scripts": {
     "start": "OS_ACTIVITY_MODE=disable ELECTRON_ENABLE_LOGGING=false electron .",
     "dist": "node scripts/runDist.js",
-    "dist:mac:arm64": "electron-builder --mac dmg zip --arm64",
-    "dist:mac:intel": "electron-builder --mac dmg zip --x64",
+    "dist:mac:arm64": "electron-builder --mac dmg zip --arm64 --publish never",
+    "dist:mac:intel": "electron-builder --mac dmg zip --x64 --publish never",
     "dist:mac:all": "npm run dist:mac:arm64 && npm run dist:mac:intel",
-    "dist:win": "electron-builder --win nsis zip --x64 --arm64"
+    "dist:win": "electron-builder --win nsis zip --x64 --arm64 --publish never"
   },
   "build": {
     "appId": "com.rainforest.figcn.beta",
