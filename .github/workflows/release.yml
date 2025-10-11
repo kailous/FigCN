@@ -2,31 +2,81 @@ name: Build & Release
 
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - main
+      - master
 
 jobs:
+  check:
+    name: 检查版本是否需要发布
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.release_decision.outputs.should_release }}
+      version: ${{ steps.release_decision.outputs.package_version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: 判断是否需要发布
+        id: release_decision
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          echo "package_version=$PACKAGE_VERSION" >> "$GITHUB_OUTPUT"
+
+          API_URL="https://api.github.com/repos/${{ github.repository }}/releases/latest"
+          RESPONSE=$(curl -sS -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GITHUB_TOKEN" "$API_URL")
+
+          RELEASE_VERSION=""
+          MESSAGE=$(echo "$RESPONSE" | jq -r '.message // empty')
+
+          if [ "$MESSAGE" != "Not Found" ] && [ -n "$RESPONSE" ]; then
+            TITLE=$(echo "$RESPONSE" | jq -r '.name // empty')
+            if [ -n "$TITLE" ]; then
+              RELEASE_VERSION=$(echo "$TITLE" | sed -E 's/^([0-9]+\.[0-9]+\.[0-9]+).*/\1/' )
+            fi
+            if [ -z "$RELEASE_VERSION" ]; then
+              TAG=$(echo "$RESPONSE" | jq -r '.tag_name // empty')
+              RELEASE_VERSION=$(echo "$TAG" | sed -E 's/-beta$//' )
+            fi
+          fi
+
+          echo "latest_release_version=$RELEASE_VERSION" >> "$GITHUB_OUTPUT"
+
+          if [ -z "$RELEASE_VERSION" ] || [ "$PACKAGE_VERSION" != "$RELEASE_VERSION" ]; then
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+          fi
+
   build-macos:
-    name: Build macOS Artifacts
+    name: 构建 macOS 安装包
+    needs: check
+    if: needs.check.outputs.should_release == 'true'
     runs-on: macos-latest
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: "false"
     steps:
       - uses: actions/checkout@v4
 
-      - name: Use Node.js
+      - name: 安装 Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
 
-      - name: Install dependencies
+      - name: 安装依赖
         run: npm ci
 
-      - name: Build macOS packages
+      - name: 构建 macOS 产物
         run: npm run dist:mac:all
 
-      - name: Upload macOS artifacts
+      - name: 上传 macOS 产物
         uses: actions/upload-artifact@v4
         with:
           name: mac-artifacts
@@ -34,26 +84,28 @@ jobs:
           if-no-files-found: error
 
   build-windows:
-    name: Build Windows Artifacts
+    name: 构建 Windows 安装包
+    needs: check
+    if: needs.check.outputs.should_release == 'true'
     runs-on: windows-latest
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: "false"
     steps:
       - uses: actions/checkout@v4
 
-      - name: Use Node.js
+      - name: 安装 Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
 
-      - name: Install dependencies
+      - name: 安装依赖
         run: npm ci
 
-      - name: Build Windows packages
+      - name: 构建 Windows 产物
         run: npm run dist:win
 
-      - name: Upload Windows artifacts
+      - name: 上传 Windows 产物
         uses: actions/upload-artifact@v4
         with:
           name: win-artifacts
@@ -61,27 +113,31 @@ jobs:
           if-no-files-found: error
 
   publish:
-    name: Draft GitHub Release
-    runs-on: ubuntu-latest
+    name: 发布 GitHub Release
     needs:
+      - check
       - build-macos
       - build-windows
+    if: needs.check.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
     steps:
-      - name: Download macOS artifacts
+      - name: 下载 macOS 产物
         uses: actions/download-artifact@v4
         with:
           name: mac-artifacts
           path: release-assets/mac
 
-      - name: Download Windows artifacts
+      - name: 下载 Windows 产物
         uses: actions/download-artifact@v4
         with:
           name: win-artifacts
           path: release-assets/win
 
-      - name: Publish release
+      - name: 发布 Release
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: ${{ needs.check.outputs.version }}-beta
+          name: ${{ needs.check.outputs.version }} beta
           files: |
             release-assets/mac/*
             release-assets/win/*

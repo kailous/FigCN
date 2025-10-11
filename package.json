@@ -1,6 +1,6 @@
 {
   "name": "FigCN",
-  "version": "1.5.3",
+  "version": "1.5.4",
   "description": "Figma 汉化助手（Electron + mitmproxy）",
   "main": "main.js",
   "productName": "FigCN",
