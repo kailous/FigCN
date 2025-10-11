@@ -31,6 +31,7 @@ contextBridge.exposeInMainWorld("mitm", {
   // 系统代理
   setSystemProxy: (host, port) => ipcRenderer.invoke("set-system-proxy", { host, port }),
   restoreSystemProxy: () => ipcRenderer.invoke("restore-system-proxy"),
+  clearFigmaCache: () => ipcRenderer.invoke("clear-figma-cache"),
 });
 
 // ---- 新增：桥接托盘菜单 -> 渲染器 ----

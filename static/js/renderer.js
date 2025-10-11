@@ -227,6 +227,43 @@ $("#btnRestoreSysProxy")?.addEventListener("click", async () => {
   }
 });
 
+$("#btnClearCache")?.addEventListener("click", async () => {
+  if (!window.mitm?.clearFigmaCache) {
+    appendLog("[缓存] 未暴露 clearFigmaCache 接口，请检查 preload.js");
+    return;
+  }
+  appendLog("[缓存] 正在清理 Figma 缓存…");
+  try {
+    const res = await window.mitm.clearFigmaCache();
+    if (!res) {
+      appendLog("[缓存] 未收到清理结果。");
+      return;
+    }
+
+    if (res.ok) {
+      if (Array.isArray(res.cleared) && res.cleared.length) {
+        appendLog("[缓存] 已清理以下目录：\n" + res.cleared.join("\n"));
+      } else {
+        appendLog("[缓存] " + (res.message || "未发现需要清理的缓存。"));
+      }
+      if (Array.isArray(res.skipped) && res.skipped.length) {
+        appendLog("[缓存] 以下目录无需处理：\n" + res.skipped.map((s) => `${s.target}（${s.reason}）`).join("\n"));
+      }
+    } else {
+      const msg = res.message || "清理缓存失败。";
+      appendLog("[缓存] 清理失败：" + msg);
+      if (Array.isArray(res.failed) && res.failed.length) {
+        appendLog("[缓存] 失败项：\n" + res.failed.map((f) => `${f.target}（${f.error || "原因未知"}）`).join("\n"));
+      }
+      alert(`清理缓存失败：\n${msg}`);
+    }
+  } catch (e) {
+    const msg = String(e);
+    appendLog("[缓存] 清理过程中出现错误：" + msg);
+    alert(`清理缓存失败：\n${msg}`);
+  }
+});
+
 // 获取版本号，写入到页面
 (async () => {
   try {

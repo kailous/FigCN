@@ -10,6 +10,8 @@ const sysProxy = require("./modules/sysProxy");
 const upstream = require("./modules/upstreamDetect");
 const certManager = require("./modules/certManager");
 
+const fsp = fs.promises;
+
 // 先把 app 注入给需要用 userData 的模块
 sysProxy.init(app);
 certManager.register(ipcMain, app);
@@ -207,5 +209,76 @@ ipcMain.handle("open-external", async (_e, url) => {
     return false;
   }
 });
+
+async function clearFigmaCache() {
+  if (process.platform !== "darwin") {
+    return { ok: false, message: "当前平台不支持自动清理缓存。" };
+  }
+
+  const baseDir = path.join(
+    app.getPath("home"),
+    "Library",
+    "Application Support",
+    "Figma",
+    "DesktopProfile"
+  );
+
+  let entries;
+  try {
+    entries = await fsp.readdir(baseDir, { withFileTypes: true });
+  } catch (err) {
+    if (err.code === "ENOENT") {
+      return { ok: true, cleared: [], message: "未找到缓存目录，无需清理。" };
+    }
+    throw err;
+  }
+
+  const cleared = [];
+  const skipped = [];
+  const failed = [];
+
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+
+    const profileCacheDir = path.join(baseDir, entry.name, "Cache");
+
+    let hasCache = false;
+    try {
+      const stat = await fsp.stat(profileCacheDir);
+      if (!stat.isDirectory()) {
+        skipped.push({ target: profileCacheDir, reason: "不是目录" });
+        continue;
+      }
+      hasCache = true;
+    } catch (err) {
+      if (err.code === "ENOENT") {
+        skipped.push({ target: profileCacheDir, reason: "未找到" });
+        continue;
+      }
+      failed.push({ target: profileCacheDir, error: err.message || String(err) });
+      continue;
+    }
+
+    if (!hasCache) continue;
+
+    try {
+      await fsp.rm(profileCacheDir, { recursive: true, force: true });
+      await fsp.mkdir(profileCacheDir, { recursive: true });
+      cleared.push(profileCacheDir);
+    } catch (err) {
+      failed.push({ target: profileCacheDir, error: err.message || String(err) });
+    }
+  }
+
+  const ok = failed.length === 0;
+  let message = "";
+  if (!cleared.length && !failed.length) {
+    message = "未发现需要清理的缓存。";
+  }
+
+  return { ok, cleared, skipped, failed, message };
+}
+
+ipcMain.handle("clear-figma-cache", async () => clearFigmaCache());
 // 导出（如需在其他模块 require main）
 module.exports = { resPath };
