@@ -10,7 +10,9 @@ TARGET_PREFIX = "/webpack-artifacts/assets/"
 RULES = [
     {
         "host": "www.figma.com",
-        "pattern": re.compile(r"^/webpack-artifacts/assets/figma_app(?:_beta|__rspack)?-[a-f0-9]+\.min\.en\.json(\.br)?$"),
+        "pattern": re.compile(
+            r"^/webpack-artifacts/assets/figma_app(?:_beta|__react_profile)?(?:__rspack)?-[a-f0-9]+\.min\.en\.json(?:\.br)?$"
+        ),
         "replace_url": "https://kailous.github.io/figma-zh-CN-localized/lang/zh.json",
     },
     {

@@ -40,7 +40,7 @@ macOS 版本已经包含 `vendor/mitmproxy.app`。如需构建 Windows 安装包
 ### 5. 测试汉化
 
 ```bash
-curl -s -x http://localhost:8080 -I "https://www.figma.com/webpack-artifacts/assets/figma_app-d2f511861c52ac4d.min.en.json.br" \
+curl -s -x http://localhost:8080 -I "https://www.figma.com/webpack-artifacts/assets/figma_app__react_profile-5ddab8b1c1e0310c.min.en.json.br" \
   | grep -qi '^server: GitHub.com' \
   && echo "汉化成功\n如果界面没有生效，请尝试清理缓存。" \
   || echo "汉化失败\n请检查是否启动代理，并正确地应用了系统代理设置。"
