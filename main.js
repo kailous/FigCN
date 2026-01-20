@@ -98,6 +98,8 @@ function createTray() {
       { type: "separator" },
       { label: "启动代理", click: () => mainWindow?.webContents.send("ui:menu:start") },
       { label: "停止代理", click: () => mainWindow?.webContents.send("ui:menu:stop") },
+      { label: "恢复系统代理", click: () => mainWindow?.webContents.send("ui:menu:restore-system-proxy") },
+      { label: "清理缓存", click: () => mainWindow?.webContents.send("ui:menu:clear-cache") },
       { type: "separator" },
       { label: "退出", click: () => { isQuiting = true; app.quit(); } },
     ]);

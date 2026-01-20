@@ -39,6 +39,8 @@ contextBridge.exposeInMainWorld("menu", {
   onStart: (cb) => ipcRenderer.on("ui:menu:start", () => cb?.()),
   onStop: (cb) => ipcRenderer.on("ui:menu:stop", () => cb?.()),
   onInstallCA: (cb) => ipcRenderer.on("ui:menu:install-ca", () => cb?.()),
+  onRestoreSystemProxy: (cb) => ipcRenderer.on("ui:menu:restore-system-proxy", () => cb?.()),
+  onClearCache: (cb) => ipcRenderer.on("ui:menu:clear-cache", () => cb?.()),
 });
 
 // 追加在现有 exposeInMainWorld 下面即可：

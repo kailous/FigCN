@@ -185,35 +185,7 @@ async function doInstallCA() {
   }
 }
 
-// —— 按钮绑定 —— 
-$("#btnStart")?.addEventListener("click", doStartProxy);
-$("#btnStop")?.addEventListener("click", doStopProxy);
-document.getElementById("btnInstallCA")?.addEventListener("click", doInstallCA);
-
-// —— 托盘菜单绑定 —— 
-window.menu?.onStart(() => doStartProxy());
-window.menu?.onStop(() => doStopProxy());
-window.menu?.onInstallCA(() => doInstallCA());
-
-// —— 兼容：手动设置/恢复按钮（如保留）
-$("#btnSetSysProxy")?.addEventListener("click", async () => {
-  if (!window.mitm?.setSystemProxy) {
-    appendLog("[系统代理] 未暴露 setSystemProxy 接口，请检查 preload.js");
-    return;
-  }
-  const host = ($("#listenHost")?.value || "127.0.0.1").trim();
-  const port = Number($("#port")?.value || 8080);
-  if (!host || !port) return appendLog("[系统代理] 缺少监听地址或端口。");
-  try {
-    appendLog(`[系统代理] 正在设置为 ${host}:${port}（需要授权）...`);
-    await window.mitm.setSystemProxy(host, port);
-    appendLog("[系统代理] 设置完成。");
-  } catch (e) {
-    appendLog("[系统代理] 设置失败：" + String(e));
-  }
-});
-
-$("#btnRestoreSysProxy")?.addEventListener("click", async () => {
+async function doRestoreSystemProxy() {
   if (!window.mitm?.restoreSystemProxy) {
     appendLog("[系统代理] 未暴露 restoreSystemProxy 接口，请检查 preload.js");
     return;
@@ -225,9 +197,9 @@ $("#btnRestoreSysProxy")?.addEventListener("click", async () => {
   } catch (e) {
     appendLog("[系统代理] 恢复失败：" + String(e));
   }
-});
+}
 
-$("#btnClearCache")?.addEventListener("click", async () => {
+async function doClearCache() {
   if (!window.mitm?.clearFigmaCache) {
     appendLog("[缓存] 未暴露 clearFigmaCache 接口，请检查 preload.js");
     return;
@@ -262,7 +234,40 @@ $("#btnClearCache")?.addEventListener("click", async () => {
     appendLog("[缓存] 清理过程中出现错误：" + msg);
     alert(`清理缓存失败：\n${msg}`);
   }
+}
+
+// —— 按钮绑定 —— 
+$("#btnStart")?.addEventListener("click", doStartProxy);
+$("#btnStop")?.addEventListener("click", doStopProxy);
+document.getElementById("btnInstallCA")?.addEventListener("click", doInstallCA);
+
+// —— 托盘菜单绑定 —— 
+window.menu?.onStart(() => doStartProxy());
+window.menu?.onStop(() => doStopProxy());
+window.menu?.onInstallCA(() => doInstallCA());
+window.menu?.onRestoreSystemProxy(() => doRestoreSystemProxy());
+window.menu?.onClearCache(() => doClearCache());
+
+// —— 兼容：手动设置/恢复按钮（如保留）
+$("#btnSetSysProxy")?.addEventListener("click", async () => {
+  if (!window.mitm?.setSystemProxy) {
+    appendLog("[系统代理] 未暴露 setSystemProxy 接口，请检查 preload.js");
+    return;
+  }
+  const host = ($("#listenHost")?.value || "127.0.0.1").trim();
+  const port = Number($("#port")?.value || 8080);
+  if (!host || !port) return appendLog("[系统代理] 缺少监听地址或端口。");
+  try {
+    appendLog(`[系统代理] 正在设置为 ${host}:${port}（需要授权）...`);
+    await window.mitm.setSystemProxy(host, port);
+    appendLog("[系统代理] 设置完成。");
+  } catch (e) {
+    appendLog("[系统代理] 设置失败：" + String(e));
+  }
 });
+
+$("#btnRestoreSysProxy")?.addEventListener("click", () => doRestoreSystemProxy());
+$("#btnClearCache")?.addEventListener("click", () => doClearCache());
 
 // 获取版本号，写入到页面
 (async () => {
