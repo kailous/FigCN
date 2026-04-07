@@ -276,6 +276,7 @@ async function setSystemProxy(host, port) {
       "AutoConfigURL",
       "/f",
     ]).catch(() => {});
+    await refreshWindowsProxy();
     return true;
   }
 
@@ -442,10 +443,28 @@ async function restoreSystemProxy() {
       ]).catch(() => {});
     }
 
+    await refreshWindowsProxy();
     return true;
   }
 
   throw new Error("当前平台暂不支持自动恢复系统代理");
+}
+
+async function refreshWindowsProxy() {
+  const ps = `
+    $signature = '[DllImport("wininet.dll", SetLastError = true, CharSet=CharSet.Auto)] public static extern bool InternetSetOption(IntPtr hInternet, int dwOption, IntPtr lpBuffer, int dwBufferLength);'
+    try {
+      $wininet = Add-Type -MemberDefinition $signature -Name "WinInet" -Namespace "Proxy" -PassThru -ErrorAction SilentlyContinue
+      if ($wininet) {
+        $wininet::InternetSetOption([IntPtr]::Zero, 39, [IntPtr]::Zero, 0)
+      }
+    } catch { }
+  `;
+  try {
+    await execFileP("powershell", ["-NoProfile", "-NonInteractive", "-Command", ps]);
+  } catch (err) {
+    console.warn("sysProxy: Failed to broadcast Windows proxy changes", err);
+  }
 }
 
 module.exports = {

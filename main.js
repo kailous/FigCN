@@ -213,17 +213,27 @@ ipcMain.handle("open-external", async (_e, url) => {
 });
 
 async function clearFigmaCache() {
-  if (process.platform !== "darwin") {
+  if (process.platform !== "darwin" && process.platform !== "win32") {
     return { ok: false, message: "当前平台不支持自动清理缓存。" };
   }
 
-  const baseDir = path.join(
-    app.getPath("home"),
-    "Library",
-    "Application Support",
-    "Figma",
-    "DesktopProfile"
-  );
+  let baseDir;
+  if (process.platform === "darwin") {
+    baseDir = path.join(
+      app.getPath("home"),
+      "Library",
+      "Application Support",
+      "Figma",
+      "DesktopProfile"
+    );
+  } else {
+    // win32 fallback
+    baseDir = path.join(
+      app.getPath("appData"),
+      "Figma",
+      "DesktopProfile"
+    );
+  }
 
   let entries;
   try {

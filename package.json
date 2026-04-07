@@ -1,6 +1,6 @@
 {
   "name": "FigCN",
-  "version": "1.6.1",
+  "version": "1.6.2",
   "description": "Figma 汉化助手（Electron + mitmproxy）",
   "main": "main.js",
   "productName": "FigCN",
@@ -17,7 +17,7 @@
     "appId": "com.rainforest.figcn.beta",
     "productName": "FigCN(Beta)",
     "asar": true,
-    "compression": "store",
+    "compression": "maximum",
     "icon": "icon/icon.icns",
 
     "files": [
