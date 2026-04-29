@@ -1,0 +1,16 @@
+# Rust 构建产物
+/target/
+
+# macOS
+.DS_Store
+
+# 打包输出
+/dist/
+
+# GUI 编译产物
+/gui/FigCNGui
+
+# IDE
+.idea/
+.vscode/
+*.swp
