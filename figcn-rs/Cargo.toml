@@ -1,0 +1,34 @@
+[package]
+name = "figcn"
+version = "2.0.0"
+edition = "2021"
+description = "Figma 汉化代理 — 纯 Rust 单文件实现"
+authors = ["kailous"]
+license = "MIT"
+
+[[bin]]
+name = "figcn"
+path = "src/main.rs"
+
+[dependencies]
+hudsucker = { version = "0.24", features = ["rcgen-ca", "rustls-client"] }
+tokio = { version = "1", features = ["full"] }
+rcgen = "0.14"
+regex = "1"
+clap = { version = "4", features = ["derive"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+dirs = "6"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+reqwest = { version = "0.12", features = ["rustls-tls"], default-features = false }
+http = "1"
+http-body-util = "0.1"
+hyper = "1"
+rustls-pemfile = "2"
+anyhow = "1"
+
+[profile.release]
+strip = true
+lto = true
+opt-level = "z"
